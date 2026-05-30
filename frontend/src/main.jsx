@@ -15,13 +15,6 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Register Service Worker for Offline Capabilities
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((registration) => {
-      console.log('SW registered: ', registration);
-    }).catch((registrationError) => {
-      console.log('SW registration failed: ', registrationError);
-    });
-  });
-}
+// Service Worker registration is handled automatically by vite-plugin-pwa
+// (registerType: 'autoUpdate' in vite.config.js).
+// The old manual /sw.js registration has been removed.

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,6 +7,7 @@ import roadsData from '../data/roads_mock.json';
 import { MOCK_COMPLAINTS, ROAD_TYPE_COLORS } from '../data/mockData';
 import { MapLoadingSkeleton } from '../components/SkeletonLoaders';
 import { useLanguage } from '../context/LanguageContext';
+import { useCountry } from '../context/CountryContext';
 
 // Fix leaflet icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -32,6 +33,10 @@ const DISTRICT_COORDS = {
   'Nellore': [14.4426, 79.9865],
   'East Godavari': [16.9891, 82.2475],
   'Chittoor': [13.2172, 79.1003],
+  'London': [51.5074, -0.1278],
+  'Birmingham': [52.4862, -1.8904],
+  'Manchester': [53.4808, -2.2426],
+  'Leeds': [53.8008, -1.5491],
 };
 
 function getCondition(road) {
@@ -63,14 +68,35 @@ function TileLoadWatcher({ onLoaded }) {
 
 export default function MapView({ onSwitchToChat }) {
   const { t } = useLanguage();
+  const { country, config } = useCountry();
   const [filterType, setFilterType] = useState('All');
   const [filterCondition, setFilterCondition] = useState('All');
   const [filterDistrict, setFilterDistrict] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  // Reset filters when country changes
+  useEffect(() => {
+    setFilterType('All');
+    setFilterCondition('All');
+    setFilterDistrict('All');
+  }, [country]);
+
+  // Derive districts dynamically based on roads present in the active country
+  const availableDistricts = useMemo(() => {
+    const districts = new Set(
+      roadsData
+        .filter(road => (road.country || 'IN') === country)
+        .map(road => road.district)
+    );
+    return Array.from(districts).sort();
+  }, [country]);
+
   const filteredRoads = useMemo(() => {
     return roadsData.filter(road => {
+      const roadCountry = road.country || 'IN';
+      if (roadCountry !== country) return false;
+
       const cond = getCondition(road);
       const condMatch = filterCondition === 'All' || 
                        (filterCondition === 'Good' && cond === 'green') ||
@@ -82,14 +108,20 @@ export default function MapView({ onSwitchToChat }) {
 
       return condMatch && typeMatch && distMatch;
     });
-  }, [filterType, filterCondition, filterDistrict]);
+  }, [country, filterType, filterCondition, filterDistrict]);
 
   const complaintsList = Object.values(MOCK_COMPLAINTS).filter(c => {
     const road = roadsData.find(r => r.id === c.road);
     if (!road) return false;
+    const roadCountry = road.country || 'IN';
+    if (roadCountry !== country) return false;
+
     const distMatch = filterDistrict === 'All' || road.district === filterDistrict;
     return distMatch;
   });
+
+  const countryCenter = country === 'GB' ? [54.0, -2.5] : [16.5, 80.6];
+  const countryZoom = country === 'GB' ? 6 : 8;
 
   return (
     <div className="relative w-full h-full flex flex-col bg-slate-900">
@@ -116,13 +148,17 @@ export default function MapView({ onSwitchToChat }) {
               <select className="w-full bg-slate-800 text-xs text-slate-200 border border-slate-600 rounded-lg p-2"
                 value={filterDistrict} onChange={e => setFilterDistrict(e.target.value)}>
                 <option value="All">{t('mapFilterAllDistricts')}</option>
-                {Object.keys(DISTRICT_COORDS).map(d => <option key={d} value={d}>{d}</option>)}
+                {availableDistricts.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               
               <select className="w-full bg-slate-800 text-xs text-slate-200 border border-slate-600 rounded-lg p-2"
                 value={filterType} onChange={e => setFilterType(e.target.value)}>
                 <option value="All">{t('mapFilterAllTypes')}</option>
-                {['NH', 'SH', 'MDR', 'ODR', 'VR', 'Urban'].map(type => <option key={type} value={type}>{type}</option>)}
+                {Object.keys(config.road_type_map || {}).map(type => (
+                  <option key={type} value={type}>
+                    {config.road_type_map[type]}
+                  </option>
+                ))}
               </select>
 
               <select className="w-full bg-slate-800 text-xs text-slate-200 border border-slate-600 rounded-lg p-2"
@@ -140,8 +176,9 @@ export default function MapView({ onSwitchToChat }) {
       {/* Map Container */}
       <div className="flex-1 w-full h-full relative z-0">
         <MapContainer 
-          center={[16.5, 80.6]} 
-          zoom={8} 
+          key={country}
+          center={countryCenter} 
+          zoom={countryZoom} 
           style={{ height: '100%', width: '100%', background: '#0f172a' }}
           zoomControl={false}
         >
@@ -153,7 +190,7 @@ export default function MapView({ onSwitchToChat }) {
           
           {/* Road Markers */}
           {filteredRoads.map((road, idx) => {
-            const baseCoords = DISTRICT_COORDS[road.district] || [16.5, 80.6];
+            const baseCoords = DISTRICT_COORDS[road.district] || countryCenter;
             // slight offset so they don't perfectly overlap in the same district
             const coords = [baseCoords[0] + (idx * 0.01) - 0.03, baseCoords[1] + (idx * 0.01) - 0.03];
             const cond = getCondition(road);
@@ -202,7 +239,7 @@ export default function MapView({ onSwitchToChat }) {
           {/* Complaint Markers */}
           {complaintsList.map((comp, idx) => {
             const road = roadsData.find(r => r.id === comp.road);
-            const baseCoords = DISTRICT_COORDS[road.district] || [16.5, 80.6];
+            const baseCoords = DISTRICT_COORDS[road.district] || countryCenter;
             const coords = [baseCoords[0] + (idx * 0.015) + 0.02, baseCoords[1] - (idx * 0.015) + 0.02];
 
             return (

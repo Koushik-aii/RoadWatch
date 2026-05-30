@@ -6,6 +6,7 @@
     "type": "NH",
     "district": "Krishna",
     "state": "Andhra Pradesh",
+    "country": "IN",
     "contractor": {
       "name": "Navayuga Engineering Company Ltd.",
       "licenseNo": "NHAI/KRS/2021/087"
@@ -34,6 +35,7 @@
     "type": "SH",
     "district": "Krishna",
     "state": "Andhra Pradesh",
+    "country": "IN",
     "contractor": {
       "name": "APCO Infrastructure Pvt. Ltd.",
       "licenseNo": "APRNB/KRS/2020/034"
@@ -61,6 +63,7 @@
     "type": "MDR",
     "district": "Guntur",
     "state": "Andhra Pradesh",
+    "country": "IN",
     "contractor": {
       "name": "Lanco Infratech Ltd.",
       "licenseNo": "APRNB/GTR/2019/112"
@@ -88,6 +91,7 @@
     "type": "VR",
     "district": "Guntur",
     "state": "Andhra Pradesh",
+    "country": "IN",
     "contractor": {
       "name": "Sri Rama Constructions",
       "licenseNo": "PMGSY/GTR/2022/045"
@@ -115,6 +119,7 @@
     "type": "Urban",
     "district": "Krishna",
     "state": "Andhra Pradesh",
+    "country": "IN",
     "contractor": {
       "name": "VMC Engineering Wing",
       "licenseNo": "VMC/2023/102"
@@ -142,6 +147,7 @@
     "type": "SH",
     "district": "Kurnool",
     "state": "Andhra Pradesh",
+    "country": "IN",
     "contractor": {
       "name": "KNR Constructions",
       "licenseNo": "APRNB/KNL/2020/088"
@@ -161,5 +167,146 @@
     "accidentCount": 18,
     "accidentSource": "iRAD MoRTH 2023",
     "flag": "Budget allocated — no repair since 2020"
+  },
+  {
+    "id": "M25",
+    "name": "M25",
+    "segment": "London Orbital Motorway",
+    "type": "Motorway",
+    "district": "London",
+    "state": "Greater London",
+    "country": "GB",
+    "contractor": {
+      "name": "Balfour Beatty plc",
+      "licenseNo": "UKHW/LON/2022/012"
+    },
+    "lastRelayDate": "10 Jun 2023",
+    "nextDueDate": "10 Jun 2028",
+    "length_km": 188.0,
+    "sanctioned_cr": 120.0,
+    "disbursed_cr": 115.0,
+    "utilised_pct": 95,
+    "source": "National Highways",
+    "sourceUrl": "https://nationalhighways.co.uk/",
+    "sourceDocs": "DfT Strategic Road Network Plan M25",
+    "repairHistory": [
+      { "date": "Jun 2023", "event": "Resurfacing Junction 10 to 16", "severity": "high" },
+      { "date": "Nov 2024", "event": "Smart motorway safety upgrades", "severity": "medium" }
+    ],
+    "accidentCount": 48,
+    "accidentSource": "STATS19 DfT Road Safety Data",
+    "flag": null
+  },
+  {
+    "id": "A1",
+    "name": "A1",
+    "segment": "London to Edinburgh (Yorkshire stretch)",
+    "type": "A_road",
+    "district": "Leeds",
+    "state": "West Yorkshire",
+    "country": "GB",
+    "contractor": {
+      "name": "Kier Group plc",
+      "licenseNo": "UKHW/LDS/2021/045"
+    },
+    "lastRelayDate": "15 Sep 2020",
+    "nextDueDate": "15 Sep 2025",
+    "length_km": 76.5,
+    "sanctioned_cr": 45.0,
+    "disbursed_cr": 42.8,
+    "utilised_pct": 95,
+    "source": "Highways England",
+    "sourceUrl": "https://nationalhighways.co.uk/",
+    "sourceDocs": "Highways England A1 Yorkshire Budget",
+    "repairHistory": [
+      { "date": "Sep 2020", "event": "Carriageway reconstruction", "severity": "high" }
+    ],
+    "accidentCount": 29,
+    "accidentSource": "STATS19 DfT Road Safety Data",
+    "flag": null
+  },
+  {
+    "id": "B1368",
+    "name": "B1368",
+    "segment": "Birmingham outer ring connector",
+    "type": "B_road",
+    "district": "Birmingham",
+    "state": "West Midlands",
+    "country": "GB",
+    "contractor": {
+      "name": "Galliford Try plc",
+      "licenseNo": "UKHW/BHX/2019/088"
+    },
+    "lastRelayDate": "12 Mar 2018",
+    "nextDueDate": "12 Mar 2022",
+    "length_km": 24.2,
+    "sanctioned_cr": 8.5,
+    "disbursed_cr": 8.0,
+    "utilised_pct": 94,
+    "source": "Birmingham City Council",
+    "sourceUrl": "https://www.birmingham.gov.uk/",
+    "sourceDocs": "BCC Transport Capital Program 2018",
+    "repairHistory": [
+      { "date": "Mar 2018", "event": "Full resurfacing completed", "severity": "high" }
+    ],
+    "accidentCount": 12,
+    "accidentSource": "STATS19 DfT Road Safety Data",
+    "flag": "OVERDUE for maintenance - past due date Mar 2022"
+  },
+  {
+    "id": "URB-A4201",
+    "name": "Regent Street",
+    "segment": "Westminster corridor",
+    "type": "Urban",
+    "district": "London",
+    "state": "Greater London",
+    "country": "GB",
+    "contractor": {
+      "name": "Tarmac Ltd.",
+      "licenseNo": "TFL/LON/2023/104"
+    },
+    "lastRelayDate": "22 Aug 2023",
+    "nextDueDate": "22 Aug 2027",
+    "length_km": 1.3,
+    "sanctioned_cr": 4.2,
+    "disbursed_cr": 3.9,
+    "utilised_pct": 93,
+    "source": "FixMyStreet London Portal",
+    "sourceUrl": "https://www.fixmystreet.com/",
+    "sourceDocs": "TfL Regent Street Public Realm Budget",
+    "repairHistory": [
+      { "date": "Aug 2023", "event": "Pavement restoration & resurfacing", "severity": "high" }
+    ],
+    "accidentCount": 8,
+    "accidentSource": "STATS19 DfT Road Safety Data",
+    "flag": null
+  },
+  {
+    "id": "M60",
+    "name": "M60",
+    "segment": "Manchester Outer Ring Road",
+    "type": "Motorway",
+    "district": "Manchester",
+    "state": "Greater Manchester",
+    "country": "GB",
+    "contractor": {
+      "name": "Amey plc",
+      "licenseNo": "UKHW/MCR/2022/076"
+    },
+    "lastRelayDate": "18 Apr 2024",
+    "nextDueDate": "18 Apr 2029",
+    "length_km": 58.2,
+    "sanctioned_cr": 65.0,
+    "disbursed_cr": 62.1,
+    "utilised_pct": 96,
+    "source": "National Highways",
+    "sourceUrl": "https://nationalhighways.co.uk/",
+    "sourceDocs": "DfT Strategic Road Network Plan M60",
+    "repairHistory": [
+      { "date": "Apr 2024", "event": "Resurfacing Junction 1 to 5 completed", "severity": "high" }
+    ],
+    "accidentCount": 22,
+    "accidentSource": "STATS19 DfT Road Safety Data",
+    "flag": null
   }
 ]

@@ -11,6 +11,9 @@ export const ROAD_TYPE_COLORS = {
   ODR: { bg: 'bg-green-500', border: 'border-green-500', text: 'text-green-400', hex: '#22c55e', label: 'Other District Road' },
   VR: { bg: 'bg-teal-500', border: 'border-teal-500', text: 'text-teal-400', hex: '#14b8a6', label: 'Village Road' },
   Urban: { bg: 'bg-rose-500', border: 'border-rose-500', text: 'text-rose-400', hex: '#f43f5e', label: 'Urban Road' },
+  Motorway: { bg: 'bg-indigo-600', border: 'border-indigo-600', text: 'text-indigo-400', hex: '#4f46e5', label: 'Motorway' },
+  A_road: { bg: 'bg-emerald-600', border: 'border-emerald-600', text: 'text-emerald-400', hex: '#059669', label: 'A-road' },
+  B_road: { bg: 'bg-amber-600', border: 'border-amber-600', text: 'text-amber-400', hex: '#d97706', label: 'B-road' },
 };
 
 // Map roadsData JSON into the structure expected by INTENT 1 and INTENT 2

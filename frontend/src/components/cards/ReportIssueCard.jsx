@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Camera, MapPin, ChevronDown, CheckCircle2, Phone, Mail, ExternalLink, AlertCircle, ShieldAlert, WifiOff } from 'lucide-react';
+import { Camera, MapPin, ChevronDown, CheckCircle2, Phone, Mail, ExternalLink, AlertCircle, ShieldAlert, WifiOff, Loader } from 'lucide-react';
 import { ROAD_TYPE_COLORS } from '../../data/mockData';
 import { useCountry } from '../../context/CountryContext';
-import { saveComplaint } from '../../services/db';
+import { saveComplaint, saveToHistory } from '../../services/db';
 import { useLanguage } from '../../context/LanguageContext';
+import { resolveAuthorityByCoords } from '../../services/jurisdictionService';
 
-export default function ReportIssueCard({ data, roadType, onComplaintFiled }) {
+export default function ReportIssueCard({ data: initialData, roadType, onComplaintFiled }) {
   const { config } = useCountry();
   const { t } = useLanguage();
   const DEFECT_TYPES = t('defects');
@@ -16,16 +17,91 @@ export default function ReportIssueCard({ data, roadType, onComplaintFiled }) {
     gpsDetected: false,
     gpsValue: '',
   });
+  // Authority data can be re-resolved when GPS is detected
+  const [data, setData] = useState(initialData);
   const [complaintId, setComplaintId] = useState('');
   const [wasOffline, setWasOffline] = useState(false);
   const colors = ROAD_TYPE_COLORS[roadType] || ROAD_TYPE_COLORS['SH'];
 
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  function handlePhotoChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setPhotoFile(file);
+      setFormState(s => ({ ...s, hasPhoto: true }));
+      const url = URL.createObjectURL(file);
+      setPhotoPreviewUrl(url);
+    }
+  }
+
+  function formatCoords(lat, lng) {
+    const latDir = lat >= 0 ? 'N' : 'S';
+    const lngDir = lng >= 0 ? 'E' : 'W';
+    return `${Math.abs(lat).toFixed(4)}° ${latDir}, ${Math.abs(lng).toFixed(4)}° ${lngDir}`;
+  }
+
   function handleGPS() {
-    // Simulate GPS detection
-    setTimeout(() => {
-      setFormState(s => ({ ...s, gpsDetected: true, gpsValue: '16.5062° N, 80.6480° E (Vijayawada)' }));
-    }, 900);
+    setGpsLoading(true);
     setFormState(s => ({ ...s, gpsDetected: false, gpsValue: t('reportGpsDetecting') }));
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const formatted = formatCoords(latitude, longitude);
+          
+          setFormState(s => ({
+            ...s,
+            gpsDetected: true,
+            gpsValue: formatted,
+          }));
+          setGpsLoading(false);
+
+          // Re-resolve jurisdiction based on real coordinates
+          const resolved = resolveAuthorityByCoords(latitude, longitude, roadType);
+          if (resolved) {
+            setData(resolved);
+          }
+        },
+        (error) => {
+          console.warn("[GPS] Geolocation failed:", error);
+          let errMsg = 'Location access denied';
+          if (error.code === 1) {
+            errMsg = 'Location permission denied';
+          } else if (error.code === 2) {
+            errMsg = 'Location unavailable';
+          } else if (error.code === 3) {
+            errMsg = 'Location request timed out';
+          }
+          setFormState(s => ({
+            ...s,
+            gpsDetected: false,
+            gpsValue: errMsg,
+          }));
+          setGpsLoading(false);
+        },
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    } else {
+      setFormState(s => ({
+        ...s,
+        gpsDetected: false,
+        gpsValue: 'Geolocation not supported',
+      }));
+      setGpsLoading(false);
+    }
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
   }
 
   async function handleSubmit(e) {
@@ -33,21 +109,35 @@ export default function ReportIssueCard({ data, roadType, onComplaintFiled }) {
     const id = 'RW-' + Math.floor(1000 + Math.random() * 9000);
     setComplaintId(id);
 
-    // Save to localStorage so MyComplaints page shows it
+    let photoBase64 = null;
+    if (photoFile) {
+      try {
+        photoBase64 = await fileToBase64(photoFile);
+      } catch (err) {
+        console.error("Failed to convert photo to base64", err);
+      }
+    }
+
+    // Save to IndexedDB history so MyComplaints page shows it
     const newComplaint = {
       id,
       issue: `${formState.defectType || 'Issue'} on ${data?.authority_name || roadType}`,
       road: roadType,
+      roadType: roadType,
+      district: data?.district || 'Krishna',
+      state: data?.state || 'Andhra Pradesh',
       stage: 0,
       filedDate: new Date().toISOString().slice(0, 10),
+      authority_name: data?.authority_name || 'R&B Division',
+      authority_email: data?.email || '',
       overdue: false,
+      photo: photoBase64,
     };
-    const existing = JSON.parse(localStorage.getItem('roadwatch_complaints') || '[]');
-    localStorage.setItem('roadwatch_complaints', JSON.stringify([newComplaint, ...existing]));
+    await saveToHistory(newComplaint);
 
     if (!navigator.onLine) {
       setWasOffline(true);
-      await saveComplaint({ id, data, roadType, formState });
+      await saveComplaint({ id, data, roadType, formState: { ...formState, photo: photoBase64 } });
     }
     
     setStep(2);
@@ -74,21 +164,35 @@ export default function ReportIssueCard({ data, roadType, onComplaintFiled }) {
           {/* Photo Upload */}
           <div>
             <label className="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">{t('reportPhotoLabel')}</label>
-            <button
-              type="button"
-              onClick={() => setFormState(s => ({ ...s, hasPhoto: !s.hasPhoto }))}
-              className={`w-full flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-4 text-xs transition-all ${
+            <label
+              className={`w-full flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-4 text-xs transition-all cursor-pointer ${
                 formState.hasPhoto
                   ? `border-${colors.border.replace('border-','')} bg-slate-700/30 text-white`
                   : 'border-slate-600 text-slate-500 hover:border-slate-400'
               }`}
             >
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
               {formState.hasPhoto ? (
                 <><CheckCircle2 size={14} className={colors.text} /> {t('reportPhotoAttached')}</>
               ) : (
                 <><Camera size={14} /> {t('reportPhotoBtn')}</>
               )}
-            </button>
+            </label>
+            {photoPreviewUrl && (
+              <div className="mt-2 flex justify-center">
+                <img
+                  src={photoPreviewUrl}
+                  alt="Preview"
+                  className="w-16 h-16 object-cover rounded-lg border border-slate-600 shadow-md"
+                />
+              </div>
+            )}
           </div>
 
           {/* GPS */}
@@ -96,6 +200,7 @@ export default function ReportIssueCard({ data, roadType, onComplaintFiled }) {
             <label className="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">{t('reportGpsLabel')}</label>
             <button
               type="button"
+              disabled={gpsLoading}
               onClick={handleGPS}
               className={`w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-medium transition-all ${
                 formState.gpsDetected
@@ -103,7 +208,11 @@ export default function ReportIssueCard({ data, roadType, onComplaintFiled }) {
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              <MapPin size={13} />
+              {gpsLoading ? (
+                <Loader className="animate-spin text-slate-400 mr-2" size={13} />
+              ) : (
+                <MapPin size={13} />
+              )}
               {formState.gpsValue || t('reportGpsBtn')}
             </button>
           </div>

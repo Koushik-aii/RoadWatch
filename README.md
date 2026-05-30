@@ -1,7 +1,7 @@
-# 🛣️ RoadWatch — Civic Road Transparency Platform
+# 🛣️ RoadWatch — AI-Powered Civic Road Safety & Transparency Platform
 
-> **IIT Madras CoERS Road Safety Hackathon 2024**  
-> A mobile-first AI chatbot platform for civic road transparency, complaint routing, and budget accountability across India.
+> **IIT Madras AI Road Safety Hackathon 2026 — Track: RoadWatch**  
+> A mobile-first, offline-ready civic engagement platform utilizing Generative AI (Gemini) for automatic complaint routing, budget accountability, and structural road transparency across India and the UK.
 
 ---
 
@@ -10,56 +10,127 @@
 | Chatbot Assistant | Live Map | My Complaints | Budget Transparency |
 |:---:|:---:|:---:|:---:|
 | ![Chat](frontend/public/screenshot_chat.png) | ![Map](frontend/public/screenshot_map.png) | ![Complaints](frontend/public/screenshot_complaints.png) | ![Budget](frontend/public/screenshot_budget.png) |
-| Road info with NHAI citations | Condition-coded road markers | Progress pipeline & overdue alerts | Budget anomaly detection |
+| AI intent classification with Gemini | Dynamic country switching & coordinate pins | Progress timeline & local IndexedDB storage | Budget utilization & red-flag anomalies |
 
 ---
 
-## 🎯 How Evaluation Criteria Map to Features
+## 🎯 Problem Statement
 
-| Criterion | What We Built | Key Files |
+Citizens encounter road safety hazards (potholes, structural damage, waterlogging) daily. However, resolving these hazards is hindered by three major hurdles:
+1. **Lack of Transparency:** Citizens do not know which roads are under warranty, who the contractor is, or when the road was last relaid.
+2. **Ambiguous Jurisdiction:** Complex governance makes it impossible for citizens to identify whether a National Highway (NHAI), State Highway (State PWD), Major District Road (MDR), Village Road (PMGSY), or Municipal Corporation is legally responsible for repair.
+3. **Budget Accountability:** Hundreds of crores are sanctioned for highway maintenance, yet tracking actual disbursement against road conditions remains completely opaque.
+
+**RoadWatch** solves these challenges by combining a mobile-first chatbot interface, dynamic mapping, and generative AI to automate defect reporting, route complaints directly to the responsible Executive Engineer, and hold agencies accountable through clear budget tracking.
+
+---
+
+## ✨ Key Features
+
+- **🧠 Gemini-Powered NLP Intent Engine:** Replaced fragile keyword logic with a production-grade Gemini API (`gemini-1.5-flash`) integration. It dynamically classifies user messages into four critical categories:
+  - `roadInfo`: Retrieves detailed structural road specifications, contractors, licenses, and last relay dates.
+  - `budget`: Siphons financial utilization and raises alerts for budget anomalies (e.g., 100% spent but no repairs for 4+ years).
+  - `report`: Triggers an interactive geolocation/photo reporting card that auto-routes complaints.
+  - `track`: Tracks complaints in a visual 3-stage progress pipeline (Filed → Under Review → Resolved).
+- **🗺️ Live Interactive Map (Leaflet):** An immersive dark-mode mapping module (`MapView.jsx`) that clusters road hazards, overlays complaints, and color-codes roads by health condition (Green = Good, Amber = Due, Red = Overdue).
+- **⚡ Unified Offline Persistence (IndexedDB):** Implements a two-store IndexedDB caching architecture (`services/db.js`):
+  - `complaints_queue`: Temporarily holds offline complaint submissions.
+  - `complaints_history`: Persistently stores filed complaints for local tracking, rendering them instantly without round-trips.
+- **📡 PWA and Service Worker (Workbox):** Configured via `vite-plugin-pwa` to cache the app shell, OpenStreetMap tiles (up to 500 tiles with a 7-day expiration), and API responses (`/api/roads` Network-First caching).
+- **🔀 Automated Jurisdiction Engine:** Includes a legal-jurisdiction resolver covering **Andhra Pradesh** fully (78 entries spanning Krishna, Guntur, Visakhapatnam, and more) plus parts of Telangana. It automatically maps `State → District → Road Type` to determine the exact Executive Engineer, direct contact email, and escalation paths.
+- **🌍 Country Adapter Pattern (Global Scope):** A unified configuration interface (`COUNTRY_CONFIGS`) allowing the entire app to dynamically adapt (currency, type labels, authorities, map center, and zoom) between **India (IN)** and the **United Kingdom (GB)**.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology Used | Version / Configuration |
 |---|---|---|
-| **1. Data Accuracy** | Road type, contractor, relay date — sourced from PMGSY/NHAI and verifiable via clickable links | [`roads_mock.json`](frontend/src/data/roads_mock.json), [`RoadInfoCard.jsx`](frontend/src/components/cards/RoadInfoCard.jsx) |
-| **2. Complaint Routing** | Intent engine auto-routes to correct Executive Engineer by road type + district. 96 authority entries. | [`intentEngine.js`](frontend/src/services/intentEngine.js), [`jurisdiction_map.json`](backend/data/jurisdiction_map.json) |
-| **3. Budget Transparency** | Sanctioned vs. disbursed figures, utilisation %, source URL, red-flag warning for anomalies | [`BudgetCard.jsx`](frontend/src/components/cards/BudgetCard.jsx), [`roads_mock.json`](frontend/src/data/roads_mock.json) |
-| **4. UI & Accessibility** | Mobile-first PWA with offline capability, skeleton loaders, onboarding tour, complaint tracking | [`sw.js`](frontend/public/sw.js), [`db.js`](frontend/src/services/db.js), [`SkeletonLoaders.jsx`](frontend/src/components/SkeletonLoaders.jsx) |
-| **5. Global Applicability** | Country-agnostic schema — one JSON config file per country. Live demo: 🇮🇳 India + 🇬🇧 UK | [`countryConfigs.js`](frontend/src/data/countryConfigs.js), [`CountryContext.jsx`](frontend/src/context/CountryContext.jsx) |
+| **Frontend** | React 19, React Router v7 | `react@^19.2.6`, `react-router-dom@^7.16.0` |
+| **Build Tool** | Vite 8 | `vite@^8.0.12` |
+| **Styling** | TailwindCSS 4, Vanilla CSS | `tailwindcss@^4.3.0`, `@tailwindcss/vite` |
+| **Interactive Maps** | Leaflet + React Leaflet | `leaflet@^1.9.4`, `react-leaflet@^5.0.0` |
+| **AI Integration** | Gemini API (`gemini-1.5-flash`) | Intent classification, fallback timeout logic |
+| **PWA & Offline** | Workbox + IndexedDB | `vite-plugin-pwa@^1.3.0`, IndexedDB (v2 schema) |
+| **Backend API** | FastAPI (Python) | `fastapi@^0.115.0`, `uvicorn[standard]` |
+| **ORM & DB** | SQLAlchemy + PostGIS | `sqlalchemy@^2.0.35`, `psycopg2-binary`, `geoalchemy2` |
+| **Icons** | Lucide React | `lucide-react@^1.17.0` |
 
 ---
 
-## 🗺️ jurisdiction_map.json — For Judges
+## ⚙️ Environment Variables Needed
 
-This is the **core routing engine** of the platform. It maps:
-
-```
-State → District → Road Type → Responsible Authority (with direct contact)
-```
-
-**Coverage:**
-- **Andhra Pradesh:** All 13 districts × 6 road types (NH, SH, MDR, ODR, VR, Urban) = **78 entries**
-- **Telangana:** 3 districts (Hyderabad, Rangareddy, Warangal) = **18 entries**
-- **Total: 96 authority entries**
-
-Each entry contains the exact legally-responsible officer:
-
-```json
-{
-  "authority_name": "NHAI PIU, Krishna",
-  "designation": "Executive Engineer (NH)",
-  "email": "pd.nhai.krishna@ap.gov.in",
-  "phone": "1800-11-6062",
-  "complaint_portal": "https://pgportal.gov.in/",
-  "escalation": "Regional Officer (RO), NHAI"
-}
+### Frontend (`frontend/.env`)
+Create a `.env` file in the `frontend` folder:
+```env
+# Gemini API Key for NLP Intent engine
+VITE_GEMINI_API_KEY=AIzaSyYourGeminiApiKeyHere
 ```
 
-**How it works in practice:**
-When a citizen says `"report pothole on SH-1 in Guntur"`, the intent engine:
-1. Detects road type → `SH`
-2. Detects district → `Guntur`
-3. Looks up `jurisdiction_map["Andhra Pradesh"]["Guntur"]["SH"]`
-4. Returns the exact Executive Engineer + direct email + complaint portal URL
+### Backend (`backend/.env`)
+Create a `.env` file in the `backend` folder:
+```env
+# PostgreSQL Database URL with PostGIS support
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/roadwatch
+```
 
-**Zero guesswork. Legally correct. Fully automated.**
+---
+
+## 🚀 How to Run Locally
+
+### 1. Backend Setup (FastAPI)
+```bash
+# Navigate to backend and create venv
+cd backend
+python -m venv venv
+
+# Activate Virtual Environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install Python requirements
+pip install -r requirements.txt
+
+# Start Development Server (running on port 8000)
+python -m uvicorn app.main:app --reload --port 8000
+```
+*API docs will be live at `http://localhost:8000/docs`*
+
+### 2. Database Setup (PostgreSQL + PostGIS)
+```bash
+# Initialize local postgres database
+createdb roadwatch
+
+# Enable PostGIS spatial extensions
+psql roadwatch -c "CREATE EXTENSION postgis;"
+```
+
+### 3. Frontend Setup (React PWA)
+```bash
+# Navigate to frontend and install dependencies
+cd frontend
+npm install
+
+# Start local server (running on port 5173)
+npm run dev
+```
+*App will be live at `http://localhost:5173`*
+
+---
+
+## 📋 Data Sources
+
+| Domain | Sourced From | Citation URL |
+|---|---|---|
+| **PMGSY Rural Roads** | PMGSY Online Monitoring & Management System (OMMS) | [omms.nic.in](https://omms.nic.in) |
+| **National Highways (India)** | NHAI Public Portal / MoRTH | [pgportal.gov.in](https://pgportal.gov.in) |
+| **State Roads (Andhra Pradesh)** | AP Roads & Buildings Dept (AP R&B) | [rnb.ap.gov.in](https://rnb.ap.gov.in) |
+| **Accident Data (India)** | iRAD MoRTH Road Accident Database | [irad.morth.gov.in](https://irad.morth.gov.in) |
+| **UK Motorways & SRN** | National Highways (UK) | [nationalhighways.co.uk](https://nationalhighways.co.uk) |
+| **Local Council Issues (UK)** | FixMyStreet Complaint Portal / BCC Portal | [fixmystreet.com](https://www.fixmystreet.com) |
+| **Accident Data (UK)** | STATS19 DfT Road Safety Data | [data.gov.uk](https://data.gov.uk) |
 
 ---
 
@@ -69,181 +140,54 @@ When a citizen says `"report pothole on SH-1 in Guntur"`, the intent engine:
 RoadWatch/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI entrypoint
-│   │   ├── models.py            # PostgreSQL/PostGIS schemas
-│   │   ├── database.py          # DB connection
-│   │   └── api/                 # Route handlers
+│   │   ├── main.py              # FastAPI application server entry
+│   │   ├── models.py            # PostgreSQL + GeoAlchemy2 schemas
+│   │   ├── database.py          # SQLAlchemy connections & configs
+│   │   └── api/                 # API controllers for roads & complaints
 │   └── data/
-│       ├── jurisdiction_map.json   # 96 authority entries (AP + Telangana)
-│       └── roads_mock.json         # 6 roads with full budget data
+│       ├── jurisdiction_map.json   # 96 legal authority mappings (AP & TS)
+│       └── roads_mock.json         # Mock database of Indian & UK roads
 │
 ├── frontend/
 │   ├── public/
-│   │   ├── sw.js                # Service Worker (offline caching)
-│   │   └── screenshot_*.png     # Screenshots for README
+│   │   ├── manifest.webmanifest # PWA Web Manifest configuration
+│   │   └── screenshot_*.png     # App views screenshots
 │   └── src/
 │       ├── components/
-│       │   ├── ChatWindow.jsx          # Main chatbot + intent dispatcher
-│       │   ├── OnboardingTour.jsx      # 3-step first-time tooltip tour
-│       │   ├── SkeletonLoaders.jsx     # Loading states for all card types
+│       │   ├── ChatWindow.jsx       # AI Chat container & dispatcher
+│       │   ├── OnboardingTour.jsx   # Dynamic 3-step interactive onboarding
+│       │   ├── SkeletonLoaders.jsx  # Card & map loading skeletons
 │       │   └── cards/
-│       │       ├── RoadInfoCard.jsx    # Intent 1 — Road data + citations
-│       │       ├── BudgetCard.jsx      # Intent 2 — Budget transparency
-│       │       ├── ReportIssueCard.jsx # Intent 3 — Offline-aware complaint form
-│       │       └── TrackComplaintCard.jsx # Intent 4 — Status tracker
+│       │       ├── RoadInfoCard.jsx     # Intent 1 card - Structural info & links
+│       │       ├── BudgetCard.jsx       # Intent 2 card - Utilization & anomalies
+│       │       ├── ReportIssueCard.jsx  # Intent 3 card - Geo/Photo defect filing
+│       │       └── TrackComplaintCard.jsx # Intent 4 card - Status progress tracker
 │       ├── context/
-│       │   └── CountryContext.jsx      # Global country config provider
+│       │   └── CountryContext.jsx   # Global country (IN vs GB) state provider
 │       ├── data/
-│       │   ├── countryConfigs.js       # IN + GB localization configs
-│       │   ├── mockData.js             # Runtime data mapped from JSON
-│       │   └── roads_mock.json         # Road database (frontend copy)
+│       │   ├── countryConfigs.js    # Localization details for IN and GB
+│       │   ├── mockData.js          # In-memory datasets mapping from JSON
+│       │   └── roads_mock.json      # Client-side compiled roads data
 │       ├── features/
-│       │   ├── MapView.jsx             # Leaflet map with condition-coded pins
-│       │   └── MyComplaints.jsx        # /my-complaints page with tracking
+│       │   ├── MapView.jsx          # Leaflet map container & country centers
+│       │   └── MyComplaints.jsx     # complaints overview with IndexedDB support
 │       └── services/
-│           ├── db.js                   # IndexedDB wrapper (offline queue)
-│           └── intentEngine.js         # Keyword-based NLP engine
+│           ├── db.js                # IndexedDB stores (v2 complaints database)
+│           └── intentEngine.js      # Gemini classification & keyword fallback
 │
-├── generate_map.py                 # Script to generate jurisdiction_map.json
-├── README.md
-└── DEMO_SCRIPT.md                  # Timed 5-minute demo script for judges
+├── generate_map.py                  # Script compiling authority routing engine
+├── LICENSE                          # MIT License
+├── packages-and-assumptions.md      # Dependency index & technical assumptions
+├── README.md                        # Project manifesto
+└── DEMO_SCRIPT.md                   # Interactive judges demo roadmap
 ```
 
 ---
 
-## ⚙️ Setup Instructions
+## 🎓 Submission Info
 
-### Prerequisites
-- Node.js 18+ and npm
-- Python 3.10+
-- PostgreSQL 14+ with PostGIS extension (optional — frontend runs standalone)
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-# Opens at http://localhost:5173
-```
-
-> ✅ The frontend is fully self-contained with mock data. No backend required to run the demo.
-
-### Backend (FastAPI)
-
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # Linux/Mac
-
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8000
-# API docs at http://localhost:8000/docs
-```
-
-### Database (PostgreSQL + PostGIS)
-
-```bash
-# Create DB
-createdb roadwatch
-psql roadwatch -c "CREATE EXTENSION postgis;"
-
-# Run migrations (if Alembic is configured)
-alembic upgrade head
-
-# Load jurisdiction map
-python generate_map.py
-```
-
----
-
-## 🌍 Global Applicability
-
-Adding a new country requires **one JSON config file**:
-
-```js
-// frontend/src/data/countryConfigs.js
-{
-  code: 'AU', name: 'Australia', flag: '🇦🇺',
-  road_type_map: {
-    NH: 'National Highway',
-    SH: 'State Road',
-    Urban: 'Local Road',
-  },
-  authority_levels: ['National Land Transport', 'State Roads Authority'],
-  complaint_endpoint: 'See.Click.Fix API',
-  currency: 'A$',
-  currency_code: 'AUD'
-}
-```
-
-The entire UI adapts: road type labels, currencies, authority names, complaint portals, escalation chains. Currently supports 🇮🇳 India and 🇬🇧 United Kingdom.
-
----
-
-## 📡 Offline Capability
-
-RoadWatch works **fully offline** — critical for rural users with spotty connectivity:
-
-1. **Service Worker** (`sw.js`) caches the app shell + all road/jurisdiction JSON on first load
-2. **Keyword NLP** (`intentEngine.js`) runs entirely client-side — no API calls needed
-3. **IndexedDB queue** (`db.js`) stores complaints locally when offline
-4. Auto-syncs on reconnect — green banner confirms sync with complaint count
-5. **Amber offline banner** appears immediately on disconnection
-
----
-
-## ✨ New in This Version (Hackathon Polish)
-
-- 🦴 **Skeleton loaders** on all cards: chatbot responses, map loading, complaints page
-- 🔴 **Road not found** — shows fallback district EE with "will be manually reviewed" message
-- 🗂️ **My Complaints** — skeleton loading state + complaints filed via the app now appear here automatically
-- 🎯 **Onboarding tour** — animated arrow pointers + glowing highlight ring on chat input
-- 🗺️ **MapView** — full-screen skeleton while Leaflet tiles load (no blank white screen)
-
----
-
-## 🔗 Live Demo
-
-> Local: `http://localhost:5173/`
-
-**Quick demo commands to try:**
-```
-road info NH-65      → Road data with contractor + NHAI source
-budget SH-4          → Budget anomaly (100% spent, no repair since 2020)
-report pothole       → Complaint form → auto-routes to EE
-track RW-2044        → View complaint status pipeline
-road info XY-999     → Error state → generic district EE assigned
-```
-
----
-
-## 📋 Data Sources
-
-| Data | Source | URL |
-|---|---|---|
-| PMGSY road data | OMMS NIC | https://omms.nic.in |
-| National Highway budgets | NHAI Portal | https://pgportal.gov.in |
-| AP State PWD records | AP R&B | https://rnb.ap.gov.in |
-| Accident statistics | iRAD MoRTH | https://irad.morth.gov.in |
-| Urban roads | VMC | https://vmc.ap.gov.in |
-| Jurisdiction map | AP R&B + NHAI Circulars | Generated via `generate_map.py` |
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Tech |
-|---|---|
-| Frontend | React 18 + Vite + TailwindCSS |
-| Maps | Leaflet + React-Leaflet (no API key) |
-| Offline | Service Worker + IndexedDB |
-| NLP | Keyword intent engine (client-side, zero latency) |
-| Backend | FastAPI + Python |
-| Database | PostgreSQL + PostGIS (optional) |
-| Icons | Lucide React |
-
----
-
-*Built for IIT Madras CoERS Road Safety Hackathon 2024*
+- **Hackathon:** IIT Madras CoERS AI Road Safety Hackathon 2026
+- **Track:** RoadWatch
+- **Submission ID:** RM-2026-RW-082
+- **Team Name:** Antigravity Creators
+- **Contact:** developer@roadwatch.org

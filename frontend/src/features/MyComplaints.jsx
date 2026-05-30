@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, CheckCircle2, AlertTriangle, WifiOff, ClipboardList, ArrowRight } from 'lucide-react';
-import { getComplaints } from '../services/db';
+import { getComplaints, getAllHistory } from '../services/db';
 import { ComplaintRowSkeleton } from '../components/SkeletonLoaders';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -61,8 +61,8 @@ export default function MyComplaints() {
   useEffect(() => {
     // Simulate a brief load so skeleton is visible
     const timer = setTimeout(async () => {
-      // Load hardcoded demo complaints + localStorage filed complaints
-      const stored = JSON.parse(localStorage.getItem('roadwatch_complaints') || '[]');
+      // Load hardcoded demo complaints + IndexedDB filed complaints
+      const stored = await getAllHistory();
       const demo = [
         {
           id: 'RW-2044', issue: 'Large pothole (40cm x 20cm) on SH-1 near Krishna Bridge',

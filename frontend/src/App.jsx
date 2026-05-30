@@ -1,41 +1,51 @@
 import { useState, useEffect } from 'react';
-import { Map, MessageSquare, WifiOff, CheckCircle, ClipboardList } from 'lucide-react';
+import { Map, MessageSquare, WifiOff, CheckCircle, ClipboardList, RefreshCw } from 'lucide-react';
 import ChatWindow from './components/ChatWindow';
 import MapView from './features/MapView';
 import MyComplaints from './features/MyComplaints';
-import { getComplaints, clearComplaints } from './services/db';
-import { useLanguage } from '../context/LanguageContext';
+import { useOffline } from './hooks/useOffline';
+import { useSyncQueue } from './hooks/useSyncQueue';
+import { useLanguage } from './context/LanguageContext';
+
+// ── Offline Banner Component ─────────────────────────────────
+function OfflineBanner({ isOffline, syncMessage, pendingCount, isSyncing }) {
+  if (!isOffline && !syncMessage) return null;
+
+  return (
+    <div
+      className={`shrink-0 flex items-center justify-center py-2 px-4 text-xs font-semibold text-white z-[2000] shadow-md transition-colors ${
+        isOffline ? 'bg-amber-600' : 'bg-emerald-600'
+      }`}
+    >
+      {isOffline ? (
+        <>
+          <WifiOff size={14} className="mr-2" />
+          ⚡ You're offline — using cached data.
+          {pendingCount > 0 && ` ${pendingCount} complaint${pendingCount > 1 ? 's' : ''} queued.`}
+          {pendingCount === 0 && ' Complaints will sync automatically.'}
+        </>
+      ) : (
+        <>
+          {isSyncing ? (
+            <RefreshCw size={14} className="mr-2 animate-spin" />
+          ) : (
+            <CheckCircle size={14} className="mr-2" />
+          )}
+          {syncMessage}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [chatTrigger, setChatTrigger] = useState(null);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [syncMessage, setSyncMessage] = useState(null);
   const { t } = useLanguage();
 
-  useEffect(() => {
-    const handleOffline = () => setIsOnline(false);
-    const handleOnline = async () => {
-      setIsOnline(true);
-      const queued = await getComplaints();
-      if (queued && queued.length > 0) {
-        setSyncMessage(`✅ Back online — syncing ${queued.length} complaints...`);
-        // Simulate sync delay
-        setTimeout(async () => {
-          await clearComplaints();
-          setSyncMessage(null);
-        }, 3000);
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  // ── PWA hooks ──────────────────────────────────────────────
+  const { isOffline } = useOffline();
+  const { syncMessage, pendingCount, isSyncing } = useSyncQueue();
 
   function handleSwitchToChat(message) {
     setChatTrigger(message);
@@ -59,16 +69,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* Offline Banner */}
-        {(!isOnline || syncMessage) && (
-          <div className={`shrink-0 flex items-center justify-center py-2 px-4 text-xs font-semibold text-white z-[2000] shadow-md transition-colors ${!isOnline ? 'bg-amber-600' : 'bg-emerald-600'}`}>
-            {!isOnline ? (
-              <><WifiOff size={14} className="mr-2" /> ⚡ You're offline — using cached data. Complaints will sync automatically.</>
-            ) : (
-              <><CheckCircle size={14} className="mr-2" /> {syncMessage}</>
-            )}
-          </div>
-        )}
+        {/* Offline / Sync Banner */}
+        <OfflineBanner
+          isOffline={isOffline}
+          syncMessage={syncMessage}
+          pendingCount={pendingCount}
+          isSyncing={isSyncing}
+        />
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden relative">

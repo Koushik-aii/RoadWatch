@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { MapPin, Send, Mic, Activity, Camera, AlertTriangle, Info, Globe, ChevronRight, Bot, User } from 'lucide-react';
 import { detectIntent } from '../services/intentEngine';
-import { QUICK_REPLIES, MOCK_JURISDICTION } from '../data/mockData';
+import { QUICK_REPLIES } from '../data/mockData';
+import { resolveAuthority } from '../services/jurisdictionService';
 import { useCountry } from '../context/CountryContext';
 import { CardSkeleton } from './SkeletonLoaders';
 import OnboardingTour from './OnboardingTour';
@@ -26,7 +27,7 @@ const NOT_FOUND_MSG = (roadKey, t) => ({
   role: 'bot',
   intent: 'notFound',
   text: t('botNotFound'),
-  data: { road: roadKey, jurisdiction: MOCK_JURISDICTION['SH'] },
+  data: { road: roadKey, jurisdiction: resolveAuthority('Andhra Pradesh', 'Krishna', 'SH') },
   quickReplies: t('qrNotFound'),
 });
 
@@ -97,24 +98,29 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
 
   useEffect(() => {
     if (initialTrigger) {
-      handleSend(initialTrigger);
-      onClearTrigger?.();
+      // Wrap in an async IIFE — React effects must not return Promises
+      (async () => {
+        await handleSend(initialTrigger);
+        onClearTrigger?.();
+      })();
     }
   }, [initialTrigger]);
 
-  function handleSend(text = input) {
+  async function handleSend(text = input) {
     const trimmed = text.trim();
     if (!trimmed) return;
     setInput('');
 
-    // Add user message
+    // Add user message immediately
     const userMsg = { id: Date.now(), role: 'user', text: trimmed };
     setMessages(prev => [...prev, userMsg]);
 
-    // Simulate bot thinking
+    // Show typing indicator while Gemini classifies (or fallback runs)
     setIsTyping(true);
-    setTimeout(() => {
-      const result = detectIntent(trimmed);
+
+    try {
+      // detectIntent is now async — awaits Gemini with a 2 s timeout fallback
+      const result = await detectIntent(trimmed);
       let botMsg;
 
       if (result.intent === 'roadInfo') {
@@ -161,9 +167,11 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
         botMsg = { id: Date.now() + 1, ...DEFAULT_MSG(trimmed, t) };
       }
 
-      setIsTyping(false);
       setMessages(prev => [...prev, botMsg]);
-    }, 1100);
+    } finally {
+      // Always hide the typing indicator, even if something throws unexpectedly
+      setIsTyping(false);
+    }
   }
 
   function handleKey(e) {
