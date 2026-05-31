@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { MapPin, Send, Mic, Activity, Camera, AlertTriangle, Info, Globe, ChevronRight, Bot, User } from 'lucide-react';
 import { detectIntent } from '../services/intentEngine';
+import { getComplaint, listComplaints } from '../services/complaintsApi';
+import { MOCK_COMPLAINTS } from '../data/mockData';
 import { QUICK_REPLIES } from '../data/mockData';
 import { resolveAuthority } from '../services/jurisdictionService';
 import { useCountry } from '../context/CountryContext';
@@ -152,15 +154,45 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
           quickReplies: t('qrReport'),
         };
       } else if (result.intent === 'track') {
-        const id = result.rawId || 'a complaint';
-        botMsg = {
-          id: Date.now() + 1,
-          role: 'bot',
-          intent: 'track',
-          text: t('botTrack', { id }),
-          data: result.data,
-          quickReplies: t('qrTrack'),
-        };
+        let trackData = null;
+        const rawId = result.rawId;
+
+        if (rawId && navigator.onLine) {
+          try {
+            trackData = await getComplaint(rawId);
+          } catch {
+            trackData = MOCK_COMPLAINTS[rawId] || null;
+          }
+        } else if (rawId) {
+          trackData = MOCK_COMPLAINTS[rawId] || null;
+        }
+
+        if (!trackData && navigator.onLine) {
+          try {
+            const list = await listComplaints({ page: 1, page_size: 1 });
+            trackData = list.items?.[0] || null;
+          } catch { /* ignore */ }
+        }
+
+        const id = rawId || trackData?.id || 'a complaint';
+        botMsg = trackData
+          ? {
+              id: Date.now() + 1,
+              role: 'bot',
+              intent: 'track',
+              text: t('botTrack', { id }),
+              data: trackData,
+              quickReplies: t('qrTrack'),
+            }
+          : {
+              id: Date.now() + 1,
+              role: 'bot',
+              intent: 'default',
+              text: rawId
+                ? `Complaint ${rawId} was not found. Check the ID or file a new report.`
+                : 'Please provide a complaint ID (e.g. RW-2044) to track status.',
+              quickReplies: t('qrTrack'),
+            };
       } else if (result.intent === 'notFound') {
         botMsg = { id: Date.now() + 1, ...NOT_FOUND_MSG(result.roadKey, t) };
       } else {

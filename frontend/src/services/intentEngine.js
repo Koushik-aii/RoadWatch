@@ -158,8 +158,7 @@ function detectIntentKeyword(text) {
     (lower.includes('complaint') && (lower.includes('status') || lower.includes('track') || lower.includes('happened')))
   ) {
     const id = extractComplaintId(text);
-    const data = id ? MOCK_COMPLAINTS[id] : Object.values(MOCK_COMPLAINTS)[0];
-    return { intent: 'track', data: data || Object.values(MOCK_COMPLAINTS)[0], rawId: id };
+    return { intent: 'track', data: null, rawId: id };
   }
 
   // Report
@@ -228,10 +227,9 @@ function mapGeminiResult(parsed, originalText) {
     case 'track': {
       // Prefer the Gemini-extracted complaint_id, fall back to regex
       const rawId = complaint_id?.toUpperCase() || extractComplaintId(originalText);
-      const data = rawId ? MOCK_COMPLAINTS[rawId] : Object.values(MOCK_COMPLAINTS)[0];
       return {
         intent: 'track',
-        data: data || Object.values(MOCK_COMPLAINTS)[0],
+        data: null,
         rawId,
       };
     }

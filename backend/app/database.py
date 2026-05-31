@@ -1,22 +1,45 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
+"""Async SQLAlchemy database engine and session factory."""
+from collections.abc import AsyncGenerator
 
-load_dotenv()
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 
-# We will use a default local postgres connection string, but allow it to be overridden
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/roadwatch")
+from .config import get_settings
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+settings = get_settings()
 
-Base = declarative_base()
+# Normalize DATABASE_URL for asyncpg
+_database_url = settings.database_url
+if _database_url.startswith("postgresql://"):
+    _database_url = _database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _database_url.startswith("postgres://"):
+    _database_url = _database_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+engine = create_async_engine(
+    _database_url,
+    echo=settings.debug,
+    pool_pre_ping=True,
+)
+
+async_session_maker = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yield an async database session (commits on success, rolls back on error)."""
+    async with async_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

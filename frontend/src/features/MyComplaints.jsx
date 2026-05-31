@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Clock, CheckCircle2, AlertTriangle, WifiOff, ClipboardList, ArrowRight } from 'lucide-react';
-import { getComplaints, getAllHistory } from '../services/db';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, WifiOff, ClipboardList, ArrowRight, RefreshCw } from 'lucide-react';
+import { getComplaints } from '../services/db';
+import { listComplaints } from '../services/complaintsApi';
 import { ComplaintRowSkeleton } from '../components/SkeletonLoaders';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -23,7 +24,9 @@ function ComplaintRow({ complaint, isOffline, t }) {
               </span>
             )}
           </div>
-          <p className="text-slate-400 text-[10px] mt-0.5 truncate">{complaint.issue || `${complaint.formState?.defectType || 'Issue'} on ${complaint.road || complaint.roadType}`}</p>
+          <p className="text-slate-400 text-[10px] mt-0.5 truncate">
+            {complaint.issue || `${complaint.formState?.defectType || 'Issue'} on ${complaint.road || complaint.roadType}`}
+          </p>
         </div>
         {!isOffline && stage >= 0 && (
           <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${STAGE_BG[stage]} ${STAGE_COLORS[stage]}`}>
@@ -45,7 +48,7 @@ function ComplaintRow({ complaint, isOffline, t }) {
 
       <div className="text-[10px] text-slate-500 flex items-center gap-1">
         <Clock size={9} />
-        {t('complaintsFiled')} {complaint.filedDate || new Date(complaint.timestamp).toLocaleDateString('en-IN')}
+        {t('complaintsFiled')} {complaint.filedDate || (complaint.created_at ? complaint.created_at.slice(0, 10) : '')}
         {complaint.overdue && <span className="text-red-400 font-semibold ml-1">{t('complaintsOverdueBadge')}</span>}
       </div>
     </div>
@@ -57,53 +60,70 @@ export default function MyComplaints() {
   const [liveComplaints, setLiveComplaints] = useState([]);
   const [offlineComplaints, setOfflineComplaints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const loadComplaints = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError('');
+    try {
+      const offline = await getComplaints();
+      setOfflineComplaints(offline || []);
+
+      if (navigator.onLine) {
+        const res = await listComplaints({ page: 1, page_size: 100 });
+        setLiveComplaints(res.items || []);
+      } else {
+        setLiveComplaints([]);
+        setLoadError('Offline — showing queued complaints only.');
+      }
+    } catch (err) {
+      console.warn('[MyComplaints] API load failed:', err);
+      setLoadError(err.message || 'Could not load complaints from server.');
+      setLiveComplaints([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Simulate a brief load so skeleton is visible
-    const timer = setTimeout(async () => {
-      // Load hardcoded demo complaints + IndexedDB filed complaints
-      const stored = await getAllHistory();
-      const demo = [
-        {
-          id: 'RW-2044', issue: 'Large pothole (40cm x 20cm) on SH-1 near Krishna Bridge',
-          road: 'SH-1', stage: 2, filedDate: '2024-11-10', overdue: false,
-        },
-        {
-          id: 'RW-1012', issue: 'Road cave-in on MDR-23 near Guntur bypass',
-          road: 'MDR-23', stage: 1, filedDate: '2024-10-05', overdue: true,
-        },
-        ...stored,
-      ];
-      setLiveComplaints(demo);
-
-      // Load offline queued complaints from IndexedDB
-      const offline = await getComplaints();
-      setOfflineComplaints(offline);
-      setIsLoading(false);
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, []);
+    loadComplaints();
+  }, [loadComplaints]);
 
   const total = liveComplaints.length + offlineComplaints.length;
 
   return (
     <div className="flex flex-col h-full bg-slate-900 overflow-y-auto">
-      {/* Header */}
       <div className="shrink-0 px-4 pt-5 pb-3 bg-slate-800/90 border-b border-slate-700/60">
-        <div className="flex items-center gap-2">
-          <ClipboardList size={18} className="text-indigo-400" />
-          <h2 className="text-white font-bold text-base">{t('complaintsTitle')}</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ClipboardList size={18} className="text-indigo-400" />
+            <h2 className="text-white font-bold text-base">{t('complaintsTitle')}</h2>
+          </div>
+          <button
+            onClick={loadComplaints}
+            disabled={isLoading}
+            className="text-slate-400 hover:text-white p-1"
+            aria-label="Refresh"
+          >
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+          </button>
         </div>
         {isLoading ? (
           <div className="h-3 bg-slate-700 rounded w-32 mt-1.5 animate-pulse" />
         ) : (
-          <p className="text-slate-400 text-xs mt-0.5">{t('complaintsTotalStat', { total, resolved: liveComplaints.filter(c => c.stage === 2).length })}</p>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {t('complaintsTotalStat', {
+              total,
+              resolved: liveComplaints.filter(c => c.stage === 2).length,
+            })}
+          </p>
+        )}
+        {loadError && (
+          <p className="text-amber-400 text-[10px] mt-1">{loadError}</p>
         )}
       </div>
 
       <div className="flex-1 px-3 py-4 space-y-2">
-        {/* Summary stats */}
         {isLoading ? (
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[0, 1, 2].map(i => (
@@ -128,7 +148,6 @@ export default function MyComplaints() {
           </div>
         )}
 
-        {/* Offline queue */}
         {offlineComplaints.length > 0 && (
           <div className="mb-4">
             <div className="text-amber-400 text-[10px] font-bold uppercase tracking-wide mb-2 flex items-center gap-1">
@@ -142,13 +161,12 @@ export default function MyComplaints() {
           </div>
         )}
 
-        {/* Live complaints */}
         <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wide mb-2">{t('complaintsAllLabel')}</div>
         {isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map(i => <ComplaintRowSkeleton key={i} />)}
           </div>
-        ) : liveComplaints.length === 0 ? (
+        ) : liveComplaints.length === 0 && offlineComplaints.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center">
               <ClipboardList size={24} className="text-slate-600" />
@@ -164,7 +182,7 @@ export default function MyComplaints() {
         ) : (
           <div className="space-y-2">
             {liveComplaints.map(c => (
-              <ComplaintRow key={c.id} complaint={c} isOffline={false} t={t} />
+              <ComplaintRow key={c.id || c.uuid} complaint={c} isOffline={false} t={t} />
             ))}
           </div>
         )}

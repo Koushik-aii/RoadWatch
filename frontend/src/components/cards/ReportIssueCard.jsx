@@ -5,6 +5,12 @@ import { useCountry } from '../../context/CountryContext';
 import { saveComplaint, saveToHistory } from '../../services/db';
 import { useLanguage } from '../../context/LanguageContext';
 import { resolveAuthorityByCoords } from '../../services/jurisdictionService';
+import {
+  buildCreatePayload,
+  createComplaint,
+  createComplaintWithImage,
+  parseGpsString,
+} from '../../services/complaintsApi';
 
 export default function ReportIssueCard({ data: initialData, roadType, onComplaintFiled }) {
   const { config } = useCountry();
@@ -16,11 +22,14 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
     hasPhoto: false,
     gpsDetected: false,
     gpsValue: '',
+    latitude: null,
+    longitude: null,
   });
-  // Authority data can be re-resolved when GPS is detected
   const [data, setData] = useState(initialData);
   const [complaintId, setComplaintId] = useState('');
   const [wasOffline, setWasOffline] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const colors = ROAD_TYPE_COLORS[roadType] || ROAD_TYPE_COLORS['SH'];
 
   const [photoFile, setPhotoFile] = useState(null);
@@ -52,30 +61,27 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
         (position) => {
           const { latitude, longitude } = position.coords;
           const formatted = formatCoords(latitude, longitude);
-          
+
           setFormState(s => ({
             ...s,
             gpsDetected: true,
             gpsValue: formatted,
+            latitude,
+            longitude,
           }));
           setGpsLoading(false);
 
-          // Re-resolve jurisdiction based on real coordinates
           const resolved = resolveAuthorityByCoords(latitude, longitude, roadType);
           if (resolved) {
             setData(resolved);
           }
         },
         (error) => {
-          console.warn("[GPS] Geolocation failed:", error);
+          console.warn('[GPS] Geolocation failed:', error);
           let errMsg = 'Location access denied';
-          if (error.code === 1) {
-            errMsg = 'Location permission denied';
-          } else if (error.code === 2) {
-            errMsg = 'Location unavailable';
-          } else if (error.code === 3) {
-            errMsg = 'Location request timed out';
-          }
+          if (error.code === 1) errMsg = 'Location permission denied';
+          else if (error.code === 2) errMsg = 'Location unavailable';
+          else if (error.code === 3) errMsg = 'Location request timed out';
           setFormState(s => ({
             ...s,
             gpsDetected: false,
@@ -95,35 +101,19 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
     }
   }
 
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
+  async function queueOffline(complaintId, photoBase64) {
+    setWasOffline(true);
+    await saveComplaint({
+      id: complaintId,
+      data,
+      roadType,
+      formState: { ...formState, photo: photoBase64 },
     });
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    const id = 'RW-' + Math.floor(1000 + Math.random() * 9000);
-    setComplaintId(id);
-
-    let photoBase64 = null;
-    if (photoFile) {
-      try {
-        photoBase64 = await fileToBase64(photoFile);
-      } catch (err) {
-        console.error("Failed to convert photo to base64", err);
-      }
-    }
-
-    // Save to IndexedDB history so MyComplaints page shows it
     const newComplaint = {
-      id,
+      id: complaintId,
       issue: `${formState.defectType || 'Issue'} on ${data?.authority_name || roadType}`,
       road: roadType,
-      roadType: roadType,
+      roadType,
       district: data?.district || 'Krishna',
       state: data?.state || 'Andhra Pradesh',
       stage: 0,
@@ -134,19 +124,87 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
       photo: photoBase64,
     };
     await saveToHistory(newComplaint);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    const coords =
+      formState.latitude != null
+        ? { lat: formState.latitude, lng: formState.longitude }
+        : parseGpsString(formState.gpsValue);
 
     if (!navigator.onLine) {
-      setWasOffline(true);
-      await saveComplaint({ id, data, roadType, formState: { ...formState, photo: photoBase64 } });
+      const offlineId = 'RW-' + Math.floor(1000 + Math.random() * 9000);
+      setComplaintId(offlineId);
+      let photoBase64 = null;
+      if (photoFile) {
+        try {
+          photoBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(photoFile);
+          });
+        } catch (err) {
+          console.error('Failed to convert photo', err);
+        }
+      }
+      await queueOffline(offlineId, photoBase64);
+      setStep(2);
+      setIsSubmitting(false);
+      if (onComplaintFiled) onComplaintFiled(offlineId);
+      return;
     }
-    
-    setStep(2);
-    if (onComplaintFiled) onComplaintFiled(id);
+
+    try {
+      let result;
+      const payload = buildCreatePayload({ formState, data, roadType, coords });
+
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('lat', String(payload.lat));
+        fd.append('lng', String(payload.lng));
+        fd.append('district', payload.district);
+        fd.append('state', payload.state);
+        fd.append('title', payload.title);
+        fd.append('description', payload.description);
+        fd.append('issue_type', payload.issue_type);
+        fd.append('road_type', payload.road_type);
+        fd.append('country', payload.country);
+        fd.append('image', photoFile);
+        result = await createComplaintWithImage(fd);
+      } else {
+        result = await createComplaint(payload);
+      }
+
+      const id = result.complaint_id;
+      const complaint = result.complaint;
+      setComplaintId(id);
+      setWasOffline(false);
+
+      if (complaint) {
+        await saveToHistory({
+          ...complaint,
+          id,
+          photo: complaint.image_url || complaint.photo,
+        });
+      }
+
+      setStep(2);
+      if (onComplaintFiled) onComplaintFiled(id);
+    } catch (err) {
+      console.error('[Report] API submit failed:', err);
+      setSubmitError(err.message || 'Failed to submit complaint');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <div className={`rounded-2xl bg-slate-800/80 border-l-4 ${colors.border} overflow-hidden w-full`}>
-      {/* Header */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-white text-sm">{t('reportTitle')}</h3>
@@ -161,7 +219,6 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
 
       {step === 1 ? (
         <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
-          {/* Photo Upload */}
           <div>
             <label className="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">{t('reportPhotoLabel')}</label>
             <label
@@ -195,7 +252,6 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
             )}
           </div>
 
-          {/* GPS */}
           <div>
             <label className="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">{t('reportGpsLabel')}</label>
             <button
@@ -217,7 +273,6 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
             </button>
           </div>
 
-          {/* Defect Type */}
           <div>
             <label className="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">{t('reportDefectLabel')}</label>
             <div className="relative">
@@ -234,16 +289,26 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
             </div>
           </div>
 
+          {submitError && (
+            <p className="text-red-400 text-[10px]">{submitError}</p>
+          )}
+
           <button
             type="submit"
-            className={`w-full py-3 rounded-xl text-xs font-bold text-white ${colors.bg} hover:opacity-90 transition-opacity`}
+            disabled={isSubmitting}
+            className={`w-full py-3 rounded-xl text-xs font-bold text-white ${colors.bg} hover:opacity-90 transition-opacity disabled:opacity-60`}
           >
-            {t('reportSubmitBtn')}
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader className="animate-spin" size={14} /> Submitting…
+              </span>
+            ) : (
+              t('reportSubmitBtn')
+            )}
           </button>
         </form>
       ) : (
         <div className="px-4 pb-4 space-y-3">
-          {/* Success / Offline Banner */}
           <div className={`flex items-center gap-3 border rounded-xl px-3 py-3 ${wasOffline ? 'bg-amber-900/40 border-amber-700/50' : 'bg-emerald-900/40 border-emerald-700/50'}`}>
             {wasOffline ? (
               <WifiOff size={20} className="text-amber-400 shrink-0" />
@@ -260,7 +325,6 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
             </div>
           </div>
 
-          {/* Jurisdiction Card */}
           <div className="bg-slate-700/30 rounded-xl p-3 border border-slate-700">
             <div className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
               <ShieldAlert size={10} /> {t('reportRoutingLabel')}

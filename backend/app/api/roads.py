@@ -25,7 +25,8 @@ from typing import Optional
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..models import Road, Complaint, Jurisdiction, ComplaintStatus
@@ -160,8 +161,8 @@ def _enrich_with_mock(summary: RoadSummary, mock: dict) -> RoadDetail:
 # ---------------------------------------------------------------------------
 
 @router.get("/", response_model=RoadListResponse, summary="List all roads")
-def get_roads(
-    db: Session = Depends(get_db),
+async def get_roads(
+    db: AsyncSession = Depends(get_db),
     road_type: Optional[str] = Query(
         None,
         alias="type",
@@ -176,22 +177,18 @@ def get_roads(
     Falls back to serving the entire mock dataset if the DB is empty (useful
     during development before data is seeded).
     """
-    # --- Query DB ---
-    query = db.query(Road)
-
+    query = select(Road)
     if road_type:
-        query = query.filter(Road.type == road_type)
+        query = query.where(Road.type == road_type)
     if search:
-        query = query.filter(Road.name.ilike(f"%{search}%"))
+        query = query.where(Road.name.ilike(f"%{search}%"))
     if state:
-        # Join with Jurisdiction to filter by state-level parent name
-        query = (
-            query
-            .join(Jurisdiction, Road.jurisdiction_id == Jurisdiction.id, isouter=True)
-            .filter(Jurisdiction.name.ilike(f"%{state}%"))
-        )
+        query = query.join(
+            Jurisdiction, Road.jurisdiction_id == Jurisdiction.id, isouter=True
+        ).where(Jurisdiction.name.ilike(f"%{state}%"))
 
-    db_roads: list[Road] = query.all()
+    result = await db.execute(query)
+    db_roads: list[Road] = list(result.scalars().all())
 
     # --- Build summaries from DB rows ---
     summaries: list[RoadSummary] = []
@@ -237,7 +234,7 @@ def get_roads(
 
 
 @router.get("/{road_id}", response_model=RoadDetail, summary="Get road details")
-def get_road_details(road_id: str, db: Session = Depends(get_db)):
+async def get_road_details(road_id: str, db: AsyncSession = Depends(get_db)):
     """
     Return full details for a single road, including:
     - Contractor and budget breakdown
@@ -252,24 +249,25 @@ def get_road_details(road_id: str, db: Session = Depends(get_db)):
     # Try to parse as UUID first
     try:
         uid = _uuid.UUID(road_id)
-        db_road = db.query(Road).filter(Road.id == uid).first()
+        road_result = await db.execute(select(Road).where(Road.id == uid))
+        db_road = road_result.scalar_one_or_none()
     except ValueError:
-        # Not a UUID — try to find by name (for short IDs like "NH-65")
-        db_road = db.query(Road).filter(Road.name == road_id).first()
+        road_result = await db.execute(select(Road).where(Road.name == road_id))
+        db_road = road_result.scalar_one_or_none()
 
     if db_road:
         summary = _db_road_to_summary(db_road)
         mock = _MOCK_BY_ID.get(db_road.name)
 
-        # Count open complaints for this road
-        open_complaints = (
-            db.query(Complaint)
-            .filter(
+        count_result = await db.execute(
+            select(func.count())
+            .select_from(Complaint)
+            .where(
                 Complaint.road_id == db_road.id,
                 Complaint.status != ComplaintStatus.RESOLVED,
             )
-            .count()
         )
+        open_complaints = count_result.scalar() or 0
 
         if mock:
             detail = _enrich_with_mock(summary, mock)

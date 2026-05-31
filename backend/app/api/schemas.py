@@ -80,43 +80,171 @@ class RoadListResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ComplaintCreateRequest(BaseModel):
-    """Payload for POST /api/complaints/."""
-    road_id: Optional[uuid.UUID] = Field(
-        None, description="UUID of the associated road (optional)"
-    )
-    lat: float = Field(..., ge=-90, le=90, description="Latitude of the issue")
-    lng: float = Field(..., ge=-180, le=180, description="Longitude of the issue")
-    issue_type: str = Field(..., min_length=2, max_length=100)
+    """Payload for POST /api/complaints/ (JSON). Supports legacy + new fields."""
+    title: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = Field(None, max_length=5000)
+    road_id: Optional[uuid.UUID] = None
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    issue_type: Optional[str] = Field(None, min_length=2, max_length=100)
     district: str = Field(..., min_length=2, max_length=100)
     state: str = Field(..., min_length=2, max_length=100)
     country: str = Field(default="India", max_length=100)
-    # Road type hint used for jurisdiction resolution when road_id is absent
-    road_type: Optional[str] = Field(
-        None,
-        description="Road type (NH/SH/MDR/ODR/VR/Urban) used for routing when road_id is not provided",
+    road_type: Optional[str] = None
+    severity: Optional[str] = Field(
+        None, description="Low / Medium / High / Critical"
     )
 
-    @field_validator("issue_type")
+    @field_validator("issue_type", "title", "description", mode="before")
     @classmethod
-    def strip_issue_type(cls, v: str) -> str:
-        return v.strip()
+    def strip_strings(cls, v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
+
+    def resolved_title(self) -> str:
+        return (self.title or self.issue_type or "Road issue").strip()
+
+    def resolved_description(self) -> str:
+        return (self.description or self.issue_type or self.resolved_title()).strip()
+
+
+class ComplaintUpdateRequest(BaseModel):
+    """Payload for PATCH /api/complaints/{complaint_id}."""
+    title: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = Field(None, max_length=5000)
+    status: Optional[str] = Field(
+        None, description="Pending / Under Review / Routed / Resolved"
+    )
+    severity: Optional[str] = None
+    assigned_department: Optional[str] = Field(None, max_length=255)
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
+
+
+class ComplaintResponse(BaseModel):
+    """Full complaint record for API responses."""
+    complaint_id: str
+    uuid: str
+    title: str
+    description: Optional[str] = None
+    issue: str
+    latitude: float
+    longitude: float
+    image_url: Optional[str] = None
+    severity: str
+    status: str
+    stage: int = Field(description="Frontend stage: 0=Filed, 1=Under Review, 2=Resolved")
+    assigned_department: Optional[str] = None
+    authority_email: Optional[str] = None
+    escalation: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    road_type: Optional[str] = None
+    road_id: Optional[str] = None
+    issue_type: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    filedDate: str
+    daysElapsed: int = 0
+    expectedDays: int = 21
+    overdue: bool = False
+    routed_authority: Optional[AuthorityInfo] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ComplaintListResponse(BaseModel):
+    """Paginated complaint list."""
+    total: int
+    page: int
+    page_size: int
+    pages: int
+    items: list[ComplaintResponse]
 
 
 class ComplaintCreateResponse(BaseModel):
     """Response returned after a complaint is successfully created."""
-    complaint_id: str = Field(
-        ..., description="Human-readable complaint ID, e.g. RW-A3F2"
-    )
+    complaint_id: str
     status: str
     routed_authority: AuthorityInfo
     message: str
+    complaint: Optional[ComplaintResponse] = None
 
 
 class ComplaintStatusResponse(BaseModel):
-    """Response for GET /api/complaints/{complaint_id}."""
+    """Legacy-compatible status response for GET /api/complaints/{complaint_id}."""
     complaint_id: str
     status: str
     issue_type: str
     submitted_at: datetime
     road_id: Optional[str] = None
     routed_authority: Optional[AuthorityInfo] = None
+    complaint: Optional[ComplaintResponse] = None
+
+
+# ---------------------------------------------------------------------------
+# Detection schemas
+# ---------------------------------------------------------------------------
+
+class DetectionItem(BaseModel):
+    """A single AI detection result."""
+    damage_type: str = Field(default="Pothole", description="Type of road damage detected")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="AI confidence score")
+    bbox: list[float] = Field(default_factory=list, description="Bounding box [x1, y1, x2, y2]")
+    area_percentage: float = Field(default=0.0, description="Percentage of image area occupied")
+    risk_score: float = Field(default=0.0, description="Composite risk score 0.0-1.0")
+    severity: str = Field(default="Low", description="Low / Medium / High / Critical")
+    repair_priority: str = Field(default="Routine", description="Emergency / Urgent / Elevated / Routine")
+    repair_timeframe: str = Field(default="7 Days", description="Immediate / 24 Hours / 3 Days / 7 Days")
+    explanation: str = Field(default="", description="Human-readable AI explanation")
+
+
+class RoadDamageResponse(BaseModel):
+    """Response from POST /api/detect-road-damage."""
+    detection_id: str = Field(..., description="UUID of the stored detection record")
+    detections: list[DetectionItem] = Field(default_factory=list)
+    detection_count: int = 0
+    overall_risk_score: float = Field(default=0.0, description="Worst-case risk score")
+    overall_severity: str = Field(default="Safe", description="Safe / Low / Medium / High / Critical")
+    image_url: str = Field(default="", description="URL to the original uploaded image")
+    result_image_url: str = Field(default="", description="URL to the annotated result image")
+    message: str = ""
+
+
+class CreateComplaintFromDetection(BaseModel):
+    """Request body to create a complaint from an AI detection."""
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    district: str = Field(..., min_length=2, max_length=100)
+    state: str = Field(..., min_length=2, max_length=100)
+    country: str = Field(default="India", max_length=100)
+    road_type: Optional[str] = Field(
+        None,
+        description="Road type (NH/SH/MDR/ODR/VR/Urban) for jurisdiction routing",
+    )
+
+
+class DetectionListItem(BaseModel):
+    """Summary of a detection for listing."""
+    id: str
+    damage_type: str
+    confidence: float
+    severity: str
+    risk_score: float
+    repair_priority: str
+    detection_count: int = 0
+    overall_severity: str = "Safe"
+    image_url: str = ""
+    result_image_url: str = ""
+    has_complaint: bool = False
+    complaint_id: Optional[str] = None
+    created_at: datetime
+
+
+class DetectionListResponse(BaseModel):
+    """Paginated list of detections."""
+    total: int
+    detections: list[DetectionListItem]

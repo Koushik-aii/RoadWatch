@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Map, MessageSquare, WifiOff, CheckCircle, ClipboardList, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BarChart3, Map, MessageSquare, WifiOff, CheckCircle, ClipboardList, RefreshCw, ScanLine, LogOut, User } from 'lucide-react';
+import { useAuth } from './context/AuthContext';
 import ChatWindow from './components/ChatWindow';
 import MapView from './features/MapView';
 import MyComplaints from './features/MyComplaints';
+import RoadDamageDetector from './features/RoadDamageDetector';
+import AnalyticsDashboard from './features/AnalyticsDashboard';
 import { useOffline } from './hooks/useOffline';
 import { useSyncQueue } from './hooks/useSyncQueue';
 import { useLanguage } from './context/LanguageContext';
@@ -42,6 +46,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [chatTrigger, setChatTrigger] = useState(null);
   const { t } = useLanguage();
+  const { user, logout, isAdmin, isOfficer } = useAuth();
 
   // ── PWA hooks ──────────────────────────────────────────────
   const { isOffline } = useOffline();
@@ -61,11 +66,21 @@ export default function App() {
         style={{ maxWidth: '430px', maxHeight: '100dvh' }}
       >
         {/* Status bar (cosmetic, mobile feel) */}
-        <div className="shrink-0 flex items-center justify-between px-5 pt-2 pb-1 bg-slate-800/90 relative z-[2000]">
-          <span className="text-slate-400 text-[10px] font-semibold">9:41</span>
-          <div className="flex items-center gap-1">
-            <div className="w-3.5 h-2 bg-slate-400 rounded-[2px]" />
-            <div className="w-0.5 h-1 bg-slate-400 rounded-r-sm" />
+        <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-1 bg-slate-800/90 relative z-[2000]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <User size={12} className="text-indigo-400 shrink-0" />
+            <span className="text-slate-400 text-[10px] truncate max-w-[120px]">{user?.full_name}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link to="/admin" className="text-[10px] text-indigo-400 font-medium">Admin</Link>
+            )}
+            {isOfficer && (
+              <Link to="/officer" className="text-[10px] text-amber-400 font-medium">Officer</Link>
+            )}
+            <button type="button" onClick={logout} className="text-slate-500 hover:text-red-400" aria-label="Logout">
+              <LogOut size={14} />
+            </button>
           </div>
         </div>
 
@@ -83,12 +98,16 @@ export default function App() {
             <ChatWindow initialTrigger={chatTrigger} onClearTrigger={() => setChatTrigger(null)} />
           ) : activeTab === 'map' ? (
             <MapView onSwitchToChat={handleSwitchToChat} />
+          ) : activeTab === 'scan' ? (
+            <RoadDamageDetector />
+          ) : activeTab === 'analytics' ? (
+            <AnalyticsDashboard />
           ) : (
             <MyComplaints />
           )}
         </div>
 
-        {/* Bottom Navigation */}
+        {/* Bottom Navigation — 4 tabs */}
         <div className="shrink-0 bg-slate-900 border-t border-slate-800 flex items-center justify-around pb-6 pt-3 px-4">
           <button 
             onClick={() => setActiveTab('chat')}
@@ -99,11 +118,31 @@ export default function App() {
           </button>
           
           <button 
+            onClick={() => setActiveTab('scan')}
+            className={`flex flex-col items-center gap-1 relative ${activeTab === 'scan' ? 'text-indigo-400' : 'text-slate-500'}`}
+          >
+            <ScanLine size={20} className={activeTab === 'scan' ? 'fill-indigo-900/40' : ''} />
+            <span className="text-[10px] font-medium">AI Scan</span>
+            {/* "AI" badge */}
+            <span className="absolute -top-1 -right-2 text-[7px] font-bold bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-1.5 py-0.5 rounded-full shadow-sm shadow-indigo-500/30">
+              AI
+            </span>
+          </button>
+
+          <button 
             onClick={() => setActiveTab('map')}
             className={`flex flex-col items-center gap-1 ${activeTab === 'map' ? 'text-indigo-400' : 'text-slate-500'}`}
           >
             <Map size={20} className={activeTab === 'map' ? 'fill-indigo-900/40' : ''} />
             <span className="text-[10px] font-medium">{t('tabMap')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'analytics' ? 'text-indigo-400' : 'text-slate-500'}`}
+          >
+            <BarChart3 size={20} className={activeTab === 'analytics' ? 'fill-indigo-900/40' : ''} />
+            <span className="text-[10px] font-medium">Intel</span>
           </button>
 
           <button 
