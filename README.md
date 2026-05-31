@@ -184,10 +184,3 @@ RoadWatch/
 
 ---
 
-## 🎓 Submission Info
-
-- **Hackathon:** IIT Madras CoERS AI Road Safety Hackathon 2026
-- **Track:** RoadWatch
-- **Submission ID:** RM-2026-RW-082
-- **Team Name:** Antigravity Creators
-- **Contact:** developer@roadwatch.org
