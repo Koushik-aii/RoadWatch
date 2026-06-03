@@ -1,49 +1,172 @@
 // ================================================================
-// NLP Intent Engine — Gemini AI-powered intent detection
-// with keyword-based fallback for offline / timeout scenarios
+// NLP Intent Engine — Rule-based pipeline with Gemini fallback
 // ================================================================
 
-import {
-  MOCK_ROADS,
-  MOCK_BUDGETS,
-  MOCK_COMPLAINTS,
-} from '../data/mockData';
 import { resolveAuthority } from './jurisdictionService';
 
-// ── Constants ────────────────────────────────────────────────
-const ROAD_KEYS = Object.keys(MOCK_ROADS); // ['NH-65','SH-1','MDR-23', ...]
-const VALID_ROAD_IDS = ['NH-65', 'SH-1', 'MDR-23', 'VR-101', 'URB-MG', 'SH-4'];
 const GEMINI_TIMEOUT_MS = 2000;
 const GEMINI_MODEL = 'gemini-1.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-// ── Gemini system prompt ─────────────────────────────────────
+// ── 1. Greeting Detection ──────────────────────────────────────
+function detectGreeting(text) {
+  const lower = text.toLowerCase().trim();
+  const greetings = ['hi', 'hello', 'hey', 'namaste', 'hola', 'bonjour', 'good morning', 'good evening', 'good afternoon', 'shubh prabhat'];
+  if (greetings.includes(lower) || greetings.some(g => lower.startsWith(g + ' ') || lower.startsWith(g + '!'))) {
+    return { intent: 'greeting', data: null };
+  }
+  return null;
+}
+
+// ── 2. Complaint Tracking Detection ────────────────────────────
+function detectTracking(text) {
+  const lower = text.toLowerCase();
+  
+  // Explicit ID match
+  const match = text.match(/RW-\d{4}/i);
+  if (match) {
+    return { intent: 'track', data: null, rawId: match[0].toUpperCase() };
+  }
+  
+  if (
+    lower.includes('my complaints') || 
+    lower.includes('my reports') || 
+    lower.includes('show complaints') ||
+    (lower.includes('complaint') && (lower.includes('status') || lower.includes('track') || lower.includes('where')))
+  ) {
+    return { intent: 'track', data: null, rawId: null };
+  }
+  return null;
+}
+
+// ── 3. Road Search / Discovery Detection ───────────────────────
+function detectRoadSearch(text) {
+  const lower = text.toLowerCase();
+  
+  // Specific IDs
+  const idMatch = text.match(/\b(NH|SH|MDR|ODR|VR|URB)-?\d*\b/i);
+  if (idMatch) {
+    return { intent: 'roadDiscovery', query: text };
+  }
+  
+  // Discovery keywords
+  if (
+    lower.includes('roads in') || 
+    lower.includes('roads near') || 
+    lower.includes('roads between') ||
+    lower.includes('highway') ||
+    lower.includes('national highway') ||
+    lower.includes('state highway') ||
+    lower.includes('rural road') ||
+    (lower.includes('road') && (lower.includes('guntur') || lower.includes('vijayawada') || lower.includes('krishna') || lower.includes('tirupati') || lower.includes('visakhapatnam'))) ||
+    lower.match(/\b(find|search|show me).+roads\b/i)
+  ) {
+    return { intent: 'roadDiscovery', query: text };
+  }
+  return null;
+}
+
+// ── 4. Budget Queries Detection ────────────────────────────────
+function detectBudget(text) {
+  const lower = text.toLowerCase();
+  if (
+    lower.includes('spent') ||
+    lower.includes('budget') ||
+    lower.includes('cost') ||
+    lower.includes('sanctioned') ||
+    lower.includes('how much') ||
+    lower.includes('contractor') ||
+    lower.includes('who built') ||
+    lower.includes('who is repairing') ||
+    lower.includes('who repaired') ||
+    lower.includes('who maintains')
+  ) {
+    return { intent: 'budget', query: text };
+  }
+  return null;
+}
+
+// ── 5. Analytics & Maintenance Queries Detection ───────────────
+function detectAnalytics(text) {
+  const lower = text.toLowerCase();
+  if (
+    lower.includes('analytics') || 
+    lower.includes('statistics') || 
+    lower.includes('most reported') ||
+    lower.includes('maintenance history') ||
+    lower.includes('condition') ||
+    lower.includes('when was') ||
+    lower.includes('last repaired')
+  ) {
+    // We can group maintenance history into 'analytics' or 'budget' for now
+    // Actually, let's keep it as roadDiscovery or specific intent, but the UI maps analytics to Analytics card.
+    // Wait, maintenance history is shown in the RoadInfoCard (budget handles some, roadDiscovery handles general info)
+    // If they ask for "maintenance history of NH-16", it should show the road info.
+    // So if it has a specific road, we might want to route to roadDiscovery/budget
+    if (lower.match(/\b(NH|SH|MDR|ODR|VR|URB)-?\d*\b/i) || lower.includes('road')) {
+        return { intent: 'roadDiscovery', query: text };
+    }
+    return { intent: 'analytics', query: text };
+  }
+  return null;
+}
+
+// ── 6. Report Issue Detection ──────────────────────────────────
+function extractRoadType(text) {
+  const upper = text.toUpperCase();
+  if (upper.includes('NH')) return 'NH';
+  if (upper.includes('SH')) return 'SH';
+  if (upper.includes('MDR')) return 'MDR';
+  if (upper.includes('ODR')) return 'ODR';
+  if (upper.includes('VR')) return 'VR';
+  if (upper.includes('URBAN')) return 'Urban';
+  return 'SH'; // default
+}
+
+function detectReport(text) {
+  const lower = text.toLowerCase();
+  if (
+    lower.includes('pothole') ||
+    lower.includes('crack') ||
+    lower.includes('waterlogging') ||
+    lower.includes('broken') ||
+    lower.includes('damage') ||
+    (lower.includes('report') && !lower.includes('budget') && !lower.includes('my report')) ||
+    lower.includes('issue') ||
+    lower.includes('bad condition') ||
+    lower.includes('terrible road')
+  ) {
+    const roadType = extractRoadType(text);
+    return { 
+      intent: 'report', 
+      data: resolveAuthority('Andhra Pradesh', 'Krishna', roadType), 
+      roadType 
+    };
+  }
+  return null;
+}
+
+
+// ── Gemini Fallback ──────────────────────────────────────────
 const SYSTEM_PROMPT = `You are an intent classifier for RoadWatch, an Indian civic road-monitoring chatbot.
 
-Classify the user's message into EXACTLY ONE of these 5 intents:
-- roadInfo   → user asks about a road: type, contractor name, last relaying date, length
-- budget     → user asks about money: sanctioned amount, budget spent, cost, how much was allocated
-- report     → user wants to report a problem: pothole, crack, waterlogging, broken signage, road damage
-- track      → user wants to track a previously submitted complaint, mentions an ID like RW-2044
-- default    → anything else (greetings, off-topic, unclear)
-
-Also extract these entities if present (return null if not found):
-- road_id       : one of [NH-65, SH-1, MDR-23, VR-101, URB-MG, SH-4] exactly as written
-- complaint_id  : a string matching pattern RW-NNNN (e.g. RW-2044, RW-1012)
-- road_type     : one of [NH, SH, MDR, ODR, VR, Urban]
-- district      : Indian district name if mentioned (e.g. Krishna, Guntur, Hyderabad)
+Classify the user's message into EXACTLY ONE of these intents:
+- greeting       → user says hi, hello, namaste
+- roadDiscovery  → user asks about roads in a city, national highways, etc.
+- budget         → user asks about money, budget spent, cost
+- report         → user wants to report a problem: pothole, crack, waterlogging
+- track          → user wants to track a previously submitted complaint
+- analytics      → user asks for statistics, analytics, most dangerous roads
+- default        → anything else (off-topic, unclear)
 
 Rules:
-1. Respond ONLY with a single JSON object. No markdown. No explanation. No code fences.
-2. JSON must have exactly these keys: intent, road_id, complaint_id, road_type, district
-3. All values must be strings or null. No booleans, arrays, or nested objects.
-4. If the user mentions a road type keyword (NH, SH, MDR, VR, Urban) but no specific road_id, infer road_type only.
-5. "track" beats "report" — if user mentions both a complaint ID and an issue, classify as track.
+1. Respond ONLY with a single JSON object. No markdown. No explanation.
+2. JSON must have exactly this key: intent
+3. All values must be strings.
 
 Example output:
-{"intent":"roadInfo","road_id":"NH-65","complaint_id":null,"road_type":"NH","district":"Krishna"}`;
+{"intent":"roadDiscovery"}`;
 
-// ── Gemini API call ──────────────────────────────────────────
 async function classifyWithGemini(text) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is not set');
@@ -60,7 +183,7 @@ async function classifyWithGemini(text) {
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text }] }],
         generationConfig: {
-          temperature: 0,          // deterministic classification
+          temperature: 0,
           maxOutputTokens: 128,
           responseMimeType: 'application/json',
         },
@@ -68,13 +191,11 @@ async function classifyWithGemini(text) {
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const json = await response.json();
-    // Extract the text content from the Gemini response envelope
     const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    // Strip any accidental markdown fences just in case
     const cleaned = rawText.replace(/```json?|```/gi, '').trim();
     return JSON.parse(cleaned);
   } finally {
@@ -82,221 +203,58 @@ async function classifyWithGemini(text) {
   }
 }
 
-// ── Keyword fallback helpers (preserved from original) ───────
-function extractRoadKey(text) {
-  const upper = text.toUpperCase();
-  for (const k of ROAD_KEYS) {
-    if (upper.includes(k)) return k;
-  }
-  if (upper.includes('NH')) return 'NH-65';
-  if (upper.includes('SH')) return 'SH-1';
-  if (upper.includes('MDR')) return 'MDR-23';
-  if (upper.includes('VR')) return 'VR-101';
-  if (upper.includes('URB')) return 'URB-MG';
-  return null;
-}
+// ── Public API ────────────────────────────────────────────────
+/**
+ * Classify the user's message using a deterministic pipeline first,
+ * then falling back to Gemini if the rules don't match.
+ */
+export async function detectIntent(text) {
+  // 1. Greeting
+  const greeting = detectGreeting(text);
+  if (greeting) return greeting;
 
-function extractUnknownRoadId(text) {
-  const match = text.match(/\b([A-Z]{1,4}-?\d+)\b/gi);
-  if (!match) return null;
-  const specific = match.find(m => !ROAD_KEYS.some(k => m.toUpperCase() === k));
-  return specific || null;
-}
+  // 2. Tracking
+  const tracking = detectTracking(text);
+  if (tracking) return tracking;
 
-function extractComplaintId(text) {
-  const match = text.match(/RW-\d{4}/i);
-  return match ? match[0].toUpperCase() : null;
-}
+  // 3. Road Discovery / Search
+  const roadSearch = detectRoadSearch(text);
+  if (roadSearch) return roadSearch;
 
-function extractRoadType(text) {
-  const upper = text.toUpperCase();
-  if (upper.includes('NH')) return 'NH';
-  if (upper.includes('SH')) return 'SH';
-  if (upper.includes('MDR')) return 'MDR';
-  if (upper.includes('ODR')) return 'ODR';
-  if (upper.includes('VR')) return 'VR';
-  if (upper.includes('URBAN')) return 'Urban';
-  return 'SH'; // sensible default for pothole reports
-}
+  // 4. Budget
+  const budget = detectBudget(text);
+  if (budget) return budget;
+  
+  // 5. Analytics
+  const analytics = detectAnalytics(text);
+  if (analytics) return analytics;
 
-/** Extract district name from text by checking if a known road ID is mentioned. */
-function extractDistrictFromRoads(text) {
-  const key = extractRoadKey(text);
-  if (key && MOCK_ROADS[key]) return MOCK_ROADS[key].district || null;
-  // Also try to find a district name mentioned directly in the text
-  const knownDistricts = [
-    'Krishna', 'Guntur', 'Visakhapatnam', 'Kurnool', 'Nellore',
-    'East Godavari', 'West Godavari', 'Chittoor', 'Kadapa',
-    'Srikakulam', 'Vizianagaram', 'Prakasam', 'Anantapur',
-    'Hyderabad', 'Ranga Reddy', 'Medchal-Malkajgiri',
-  ];
-  const lower = text.toLowerCase();
-  for (const d of knownDistricts) {
-    if (lower.includes(d.toLowerCase())) return d;
-  }
-  return null;
-}
+  // 6. Report Issue
+  const report = detectReport(text);
+  if (report) return report;
 
-/** Extract state name from text by checking if a known road ID is mentioned. */
-function extractStateFromRoads(text) {
-  const key = extractRoadKey(text);
-  if (key && MOCK_ROADS[key]) return MOCK_ROADS[key].state || null;
-  const lower = text.toLowerCase();
-  if (lower.includes('andhra pradesh') || lower.includes('andhra')) return 'Andhra Pradesh';
-  if (lower.includes('telangana')) return 'Telangana';
-  return null;
-}
-
-
-/** Pure keyword-based classification — used as fallback. */
-function detectIntentKeyword(text) {
-  const lower = text.toLowerCase();
-
-  // Track (highest specificity — check first)
-  if (
-    lower.includes('rw-') ||
-    (lower.includes('complaint') && (lower.includes('status') || lower.includes('track') || lower.includes('happened')))
-  ) {
-    const id = extractComplaintId(text);
-    return { intent: 'track', data: null, rawId: id };
-  }
-
-  // Report
-  if (
-    lower.includes('pothole') ||
-    lower.includes('crack') ||
-    lower.includes('waterlogging') ||
-    lower.includes('broken') ||
-    lower.includes('damage') ||
-    (lower.includes('report') && !lower.includes('budget')) ||
-    lower.includes('issue')
-  ) {
-    const roadType = extractRoadType(text);
-    // Resolve real authority from jurisdiction map; default to Krishna / AP
-    const district = extractDistrictFromRoads(text) || 'Krishna';
-    const state = extractStateFromRoads(text) || 'Andhra Pradesh';
-    return { intent: 'report', data: resolveAuthority(state, district, roadType), roadType };
-  }
-
-  // Budget
-  if (
-    lower.includes('spent') ||
-    lower.includes('budget') ||
-    lower.includes('cost') ||
-    lower.includes('sanctioned') ||
-    lower.includes('how much')
-  ) {
-    const key = extractRoadKey(text);
-    return { intent: 'budget', data: MOCK_BUDGETS[key] || MOCK_BUDGETS['NH-65'], roadKey: key };
-  }
-
-  // Road info
-  if (
-    lower.includes('what type') ||
-    lower.includes('road info') ||
-    lower.includes('nh-') ||
-    lower.includes('sh-') ||
-    lower.includes('mdr-') ||
-    lower.includes('contractor') ||
-    lower.includes('relay') ||
-    lower.includes('road') ||
-    lower.includes('highway')
-  ) {
-    const unknown = extractUnknownRoadId(text);
-    const key = extractRoadKey(text);
-    if (unknown && !key) {
-      return { intent: 'notFound', data: null, roadKey: unknown };
+  // 7. Gemini Fallback
+  try {
+    const geminiResult = await classifyWithGemini(text);
+    const validIntents = ['greeting', 'roadDiscovery', 'budget', 'report', 'track', 'analytics'];
+    
+    if (validIntents.includes(geminiResult.intent)) {
+      if (geminiResult.intent === 'roadDiscovery' || geminiResult.intent === 'budget' || geminiResult.intent === 'analytics') {
+        return { intent: geminiResult.intent, query: text };
+      }
+      if (geminiResult.intent === 'track') {
+        const idMatch = text.match(/RW-\d{4}/i);
+        return { intent: 'track', data: null, rawId: idMatch ? idMatch[0].toUpperCase() : null };
+      }
+      if (geminiResult.intent === 'report') {
+        const roadType = extractRoadType(text);
+        return { intent: 'report', data: resolveAuthority('Andhra Pradesh', 'Krishna', roadType), roadType };
+      }
+      return geminiResult;
     }
-    return { intent: 'roadInfo', data: MOCK_ROADS[key] || MOCK_ROADS['NH-65'], roadKey: key || 'NH-65' };
+  } catch (err) {
+    console.warn('[IntentEngine] Gemini unavailable or timed out.');
   }
 
   return { intent: 'default', data: null };
-}
-
-// ── Map Gemini JSON → the shape ChatWindow.handleSend expects ─
-function mapGeminiResult(parsed, originalText) {
-  const { intent, road_id, complaint_id, road_type, district } = parsed;
-
-  // Validate intent — reject unknown values
-  const validIntents = ['roadInfo', 'budget', 'report', 'track', 'default'];
-  if (!validIntents.includes(intent)) {
-    return detectIntentKeyword(originalText);
-  }
-
-  switch (intent) {
-    case 'track': {
-      // Prefer the Gemini-extracted complaint_id, fall back to regex
-      const rawId = complaint_id?.toUpperCase() || extractComplaintId(originalText);
-      return {
-        intent: 'track',
-        data: null,
-        rawId,
-      };
-    }
-
-    case 'report': {
-      // Use Gemini road_type; fall back to keyword extraction
-      const rType = road_type || extractRoadType(originalText);
-      // Prefer Gemini-extracted district, fall back to road data or defaults
-      const rDistrict = district || extractDistrictFromRoads(originalText) || 'Krishna';
-      const rState = extractStateFromRoads(originalText) || 'Andhra Pradesh';
-      return {
-        intent: 'report',
-        data: resolveAuthority(rState, rDistrict, rType),
-        roadType: rType,
-      };
-    }
-
-    case 'budget': {
-      // Prefer Gemini road_id; fall back to keyword extraction
-      const key = (road_id && VALID_ROAD_IDS.includes(road_id))
-        ? road_id
-        : extractRoadKey(originalText);
-      return {
-        intent: 'budget',
-        data: MOCK_BUDGETS[key] || MOCK_BUDGETS['NH-65'],
-        roadKey: key,
-      };
-    }
-
-    case 'roadInfo': {
-      const key = (road_id && VALID_ROAD_IDS.includes(road_id))
-        ? road_id
-        : extractRoadKey(originalText);
-      // Gemini found a road-like token that isn't in our DB
-      if (!key) {
-        const unknown = extractUnknownRoadId(originalText);
-        if (unknown) return { intent: 'notFound', data: null, roadKey: unknown };
-      }
-      return {
-        intent: 'roadInfo',
-        data: MOCK_ROADS[key] || MOCK_ROADS['NH-65'],
-        roadKey: key || 'NH-65',
-      };
-    }
-
-    case 'default':
-    default:
-      return { intent: 'default', data: null };
-  }
-}
-
-// ── Public API ────────────────────────────────────────────────
-/**
- * Classify the user's message using the Gemini API.
- * Falls back to keyword-based classification if the API call fails or times out.
- *
- * @param {string} text - Raw user message
- * @returns {Promise<{intent: string, data: any, [key: string]: any}>}
- */
-export async function detectIntent(text) {
-  try {
-    const geminiResult = await classifyWithGemini(text);
-    return mapGeminiResult(geminiResult, text);
-  } catch (err) {
-    // AbortError = timeout; any other error = API/network failure
-    const reason = err.name === 'AbortError' ? 'timeout' : err.message;
-    console.warn(`[IntentEngine] Gemini unavailable (${reason}). Using keyword fallback.`);
-    return detectIntentKeyword(text);
-  }
 }

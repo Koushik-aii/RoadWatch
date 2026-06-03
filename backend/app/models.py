@@ -21,10 +21,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-<<<<<<< Updated upstream
-from geoalchemy2 import Geometry
-=======
->>>>>>> Stashed changes
 
 from .database import Base
 
@@ -100,11 +96,7 @@ class Jurisdiction(Base):
     parent_id = Column(UUID(as_uuid=True), ForeignKey("jurisdictions.id"), nullable=True)
     contact_email = Column(String, nullable=True)
     contact_phone = Column(String, nullable=True)
-<<<<<<< Updated upstream
-    boundary = Column(Geometry("MULTIPOLYGON", srid=4326), nullable=True)
-=======
     boundary = Column(Text, nullable=True)
->>>>>>> Stashed changes
 
     parent = relationship("Jurisdiction", remote_side=[id])
     roads = relationship("Road", back_populates="jurisdiction")
@@ -117,16 +109,25 @@ class Road(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
     jurisdiction_id = Column(UUID(as_uuid=True), ForeignKey("jurisdictions.id"))
-<<<<<<< Updated upstream
-    geometry = Column(Geometry("LINESTRING", srid=4326), nullable=True)
-=======
     geometry = Column(Text, nullable=True)
->>>>>>> Stashed changes
     relay_date = Column(Date, nullable=True)
     budget_sanctioned = Column(Numeric(12, 2), nullable=True)
+    budget_released = Column(Numeric(12, 2), nullable=True)
     budget_spent = Column(Numeric(12, 2), nullable=True)
+    funding_agency = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
+    source_document_id = Column(String, nullable=True)
+    budget_last_updated = Column(Date, nullable=True)
     contractor_name = Column(String, nullable=True)
+    contractor_agency = Column(String, nullable=True)
+    contract_value = Column(Numeric(12, 2), nullable=True)
+    completion_date = Column(Date, nullable=True)
+    maintenance_warranty_years = Column(Integer, nullable=True)
+    
+    # Source Verification
+    source_name = Column(String, nullable=True)
+    source_retrieval_date = Column(Date, nullable=True)
+    source_confidence = Column(String, nullable=True)
 
     jurisdiction = relationship("Jurisdiction", back_populates="roads")
     complaints = relationship("Complaint", back_populates="road")
@@ -157,11 +158,7 @@ class Complaint(Base):
 
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
-<<<<<<< Updated upstream
-    location = Column(Geometry("POINT", srid=4326), nullable=True)
-=======
     location = Column(Text, nullable=True)
->>>>>>> Stashed changes
 
     image_path = Column(String(512), nullable=True)
     severity = Column(Enum(SeverityLevel), default=SeverityLevel.MEDIUM, nullable=False)
@@ -173,7 +170,7 @@ class Complaint(Base):
 
     district = Column(String(100), nullable=True)
     state = Column(String(100), nullable=True)
-    country = Column(String(100), default="India")
+    country = Column(String(100), nullable=True)
     road_type = Column(String(32), nullable=True)
 
     road_id = Column(UUID(as_uuid=True), ForeignKey("roads.id"), nullable=True)
@@ -184,13 +181,10 @@ class Complaint(Base):
     issue_type = Column(String(100), nullable=True)
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
 
-<<<<<<< Updated upstream
-=======
     sla_deadline = Column(DateTime(timezone=True), nullable=True)
     is_escalated = Column(Boolean, default=False, nullable=False)
     resolution_notes = Column(Text, nullable=True)
 
->>>>>>> Stashed changes
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -198,11 +192,40 @@ class Complaint(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    
+    # New Fields for Authority Details
+    authority_name = Column(String(255), nullable=True)
+    authority_designation = Column(String(255), nullable=True)
+    authority_phone = Column(String(50), nullable=True)
+
+    # Source Verification
+    source_name = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    source_retrieval_date = Column(Date, nullable=True)
+    source_confidence = Column(String, nullable=True)
 
     road = relationship("Road", back_populates="complaints")
     assigned_jurisdiction = relationship("Jurisdiction")
     reporter = relationship("User", back_populates="complaints")
     detections = relationship("RoadDamageDetection", back_populates="complaint")
+    routing_history = relationship("ComplaintRoutingHistory", back_populates="complaint", cascade="all, delete-orphan")
+
+
+class ComplaintRoutingHistory(Base):
+    __tablename__ = "complaint_routing_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    complaint_id = Column(UUID(as_uuid=True), ForeignKey("complaints.id"), nullable=False)
+    routed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    authority_name = Column(String(255), nullable=True)
+    designation = Column(String(255), nullable=True)
+    department = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    complaint = relationship("Complaint", back_populates="routing_history")
 
 
 class RoadDamageDetection(Base):

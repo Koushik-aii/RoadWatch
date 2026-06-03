@@ -75,11 +75,8 @@ async def update_complaint_status(
     updates = {"status": body.status}
     if body.assigned_department:
         updates["assigned_department"] = body.assigned_department
-<<<<<<< Updated upstream
-=======
     if body.resolution_notes is not None:
         updates["resolution_notes"] = body.resolution_notes
->>>>>>> Stashed changes
 
     try:
         updated = await update_complaint(db, complaint_id, updates)
@@ -87,8 +84,6 @@ async def update_complaint_status(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return _build_complaint_response(updated)
-<<<<<<< Updated upstream
-=======
 
 
 @router.get("/metrics")
@@ -134,4 +129,3 @@ async def get_metrics(officer: OfficerUser, db: AsyncSession = Depends(get_db)):
                 overdue += 1
                 
     return {"open": open_c, "resolved": resolved, "overdue": overdue}
->>>>>>> Stashed changes

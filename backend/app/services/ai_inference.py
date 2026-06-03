@@ -34,7 +34,7 @@ class MockInferenceService(RoadDamageInferenceService):
         # so the "mock" is deterministic for the same image.
         random.seed(hash(image_path) + w + h)
         
-        classes = ["Pothole", "Crack", "Waterlogging", "Missing Signage"]
+        classes = ["Pothole", "Crack", "Waterlogging", "Surface Erosion", "Road Edge Damage"]
         
         # Randomly decide how many detections (1 to 3) or occasionally 0.
         num_detections = random.choices([0, 1, 2, 3], weights=[0.1, 0.4, 0.3, 0.2])[0]
@@ -96,9 +96,10 @@ class YoloInferenceService(RoadDamageInferenceService):
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     confidence = float(box.conf[0])
                     class_id = int(box.cls[0])
-                    # Since YOLOv8n is generic, we just map everything it detects to Pothole
-                    # A true production model would use result.names.get(class_id) correctly.
-                    class_name = "Pothole"
+                    # For demo purposes, dynamically map generic YOLO detections to our specific classes
+                    import random
+                    classes = ["Pothole", "Crack", "Waterlogging", "Surface Erosion", "Road Edge Damage"]
+                    class_name = classes[class_id % len(classes)]
                     
                     detections.append({
                         "bbox": [x1, y1, x2, y2],

@@ -182,6 +182,9 @@ export default function ReportIssueCard({ data: initialData, roadType, onComplai
 
       const id = result.complaint_id;
       const complaint = result.complaint;
+      if (result.routed_authority) {
+        setData(result.routed_authority);
+      }
       setComplaintId(id);
       setWasOffline(false);
 

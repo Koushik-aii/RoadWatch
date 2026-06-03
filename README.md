@@ -149,76 +149,14 @@ Key API groups:
 
 - Node.js 20 or newer
 - Python 3.10 or newer
-<<<<<<< Updated upstream
-- Docker Desktop, recommended for PostGIS
-- Git, optional but recommended
-
-### 1. Start PostgreSQL/PostGIS
-
-From the repository root:
-
-```bash
-docker compose up -d db
-```
-
-This starts a PostGIS database at:
-
-```env
-postgresql://postgres:postgres@localhost:5432/roadwatch
-```
-
-### 2. Configure Backend
-
-Create `backend/.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/roadwatch
-DATABASE_URL_SYNC=postgresql://postgres:postgres@localhost:5432/roadwatch
-CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-JWT_SECRET_KEY=replace-this-with-a-long-random-secret
-BOOTSTRAP_ADMIN_EMAIL=admin@roadwatch.local
-BOOTSTRAP_ADMIN_PASSWORD=ChangeMe123!
-```
-
-Install dependencies and run migrations:
-=======
 
 ### 1. Configure Backend (Zero-Config SQLite)
 
 The backend now uses an embedded SQLite database by default. It will automatically create all necessary tables and seed demo accounts (`admin@roadwatch.ai`, `officer@test.com`, `citizen@test.com`) on startup.
->>>>>>> Stashed changes
 
 ```bash
 cd backend
 python -m venv venv
-<<<<<<< Updated upstream
-venv\Scripts\activate
-pip install -r requirements.txt
-alembic upgrade head
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-On macOS or Linux, activate the virtual environment with:
-
-```bash
-source venv/bin/activate
-```
-
-### 3. Configure Frontend
-
-Create `frontend/.env`:
-
-```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_GEMINI_API_KEY=
-```
-
-The Gemini key is optional for local demo flows that use fallback intent handling.
-
-Install dependencies and start the frontend:
-
-```bash
-=======
 # Windows
 venv\Scripts\activate
 # macOS/Linux
@@ -233,142 +171,11 @@ python -m uvicorn app.main:app --reload --port 8000
 Install dependencies and start the frontend:
 
 ```bash
->>>>>>> Stashed changes
 cd frontend
 npm install
 npm run dev
 ```
 
-<<<<<<< Updated upstream
-Open:
-
-```text
-http://localhost:5173
-```
-
-## Docker Deployment
-
-For a local containerized backend and database:
-
-```bash
-docker compose up --build
-```
-
-This starts:
-
-- PostGIS on `localhost:5432`
-- FastAPI on `localhost:8000`
-
-Then run the frontend separately:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Production Deployment Notes
-
-Recommended production shape:
-
-1. Build frontend static assets:
-
-```bash
-cd frontend
-npm run build
-```
-
-2. Serve `frontend/dist` from a static host such as Vercel, Netlify, Cloudflare Pages, or Nginx.
-3. Deploy the backend with Uvicorn/Gunicorn workers behind a reverse proxy.
-4. Use managed PostgreSQL with PostGIS enabled.
-5. Set production environment variables:
-
-```env
-DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST:5432/roadwatch
-DATABASE_URL_SYNC=postgresql://USER:PASSWORD@HOST:5432/roadwatch
-CORS_ORIGINS=https://your-frontend-domain.example
-JWT_SECRET_KEY=strong-random-secret
-```
-
-6. Run migrations during release:
-
-```bash
-cd backend
-alembic upgrade head
-```
-
-7. Store uploaded images in object storage for production, rather than local disk.
-8. Add HTTPS, monitoring, structured logs, backup policies, and rate-limit persistence before real public use.
-
-## Scalability Discussion
-
-RoadWatch is structured around aggregation APIs and spatial data so it can scale beyond a small hackathon dataset.
-
-Important scaling paths:
-
-- Add PostGIS `GIST` indexes on complaint `location` and road geometries.
-- Add B-tree indexes on `district`, `severity`, `status`, `created_at`, and `assigned_department`.
-- Use bounding-box map queries so the frontend loads only visible map points.
-- Move expensive analytics to cached queries or materialized views.
-- Run image detection in a background worker instead of inside request/response paths.
-- Store uploads in S3-compatible object storage.
-- Use a queue for offline sync reconciliation, notifications, and dashboard refresh.
-- Add read replicas for analytics-heavy deployments.
-- Add audit logs for workflow transitions and officer actions.
-
-## Hackathon Demo Flow
-
-A focused 5-minute demo should show one complete civic loop:
-
-1. Upload or select a road damage image in AI Scan.
-2. Show AI-assisted severity, confidence, and repair priority.
-3. Create a complaint from the detection.
-4. Show jurisdiction routing to the responsible authority.
-5. Open the GIS map and analytics dashboard to show heatmap, clusters, dangerous zones, trends, and department performance.
-6. Switch offline, queue a complaint, reconnect, and show sync.
-7. Switch language briefly to demonstrate accessibility and inclusion.
-
-## Responsible AI and Data Notes
-
-- AI outputs are decision-support signals, not final engineering assessments.
-- Confidence and severity should be shown to users as estimates.
-- Seeded demo data should be replaced with verified public datasets before deployment.
-- Government workflow screens should be labeled as simulated unless integrated with official systems.
-- Any real deployment should include privacy review, evidence retention policy, and human review for escalations.
-
-## Repository Structure
-
-```text
-RoadWatch-main/
-  backend/
-    app/
-      api/                 FastAPI route modules
-      services/            Business logic and analytics services
-      core/                Auth, middleware, security, exceptions
-      schemas/             Auth and response schemas
-      models.py            SQLAlchemy models
-      database.py          Async DB setup
-    alembic/               Database migrations
-    data/                  Seed jurisdiction and road data
-    requirements.txt
-  frontend/
-    src/
-      components/          Shared UI components
-      context/             Auth, language, country providers
-      features/            Main app screens
-      hooks/               Offline, sync, analytics hooks
-      services/            API, IndexedDB, detection, auth clients
-      data/                Seed client data and translations
-    public/                PWA icons and screenshots
-    package.json
-  docker-compose.yml
-  DEMO_SCRIPT.md
-  HACKATHON_FINALIST_STRATEGY.md
-```
-
-## License
-
-=======
 Open `http://localhost:5173` in your browser.
 
 ## Production Deployment Notes
@@ -457,5 +264,4 @@ RoadWatch-main/
 
 ## License
 
->>>>>>> Stashed changes
 This repository is provided under the MIT License. See `LICENSE` for details.

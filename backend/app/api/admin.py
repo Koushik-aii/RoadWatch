@@ -128,8 +128,6 @@ async def analytics(_admin: AdminUser, db: AsyncSession = Depends(get_db)):
         users_by_role=role_counts,
         complaints_last_7_days=recent,
     )
-<<<<<<< Updated upstream
-=======
 
 
 # ---------------------------------------------------------------------------
@@ -292,4 +290,3 @@ async def delete_jurisdiction(
 
     await db.delete(jurisdiction)
     await db.commit()
->>>>>>> Stashed changes

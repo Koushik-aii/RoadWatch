@@ -122,6 +122,12 @@ export default function DetectionResultCard({ detection, index = 0 }) {
           <p className="text-[11px] text-slate-300 leading-relaxed">
             {detection.explanation}
           </p>
+          <div className="mt-2 pt-2 border-t border-slate-700/50 flex items-start gap-1">
+            <span className="text-amber-500/70 text-[9px] mt-0.5">⚠️</span>
+            <p className="text-[9px] text-slate-500 font-semibold uppercase tracking-wide leading-tight">
+              AI assessments are probabilistic and should be verified manually. The system does not claim absolute certainty.
+            </p>
+          </div>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, ChevronRight, ExternalLink, Activity, Circle } from 'lucide-react';
 import { useCountry } from '../../context/CountryContext';
 import { useLanguage } from '../../context/LanguageContext';
+import SourceCitation from '../common/SourceCitation';
 
 export default function TrackComplaintCard({ data }) {
   const { config } = useCountry();
@@ -105,13 +106,23 @@ export default function TrackComplaintCard({ data }) {
         </div>
       )}
 
-      {/* Authority Email */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-700/40 text-[10px]">
-          <div className="font-semibold text-white text-sm">{config?.code === 'GB' ? config.authority_levels[0] : data.authority}</div>
-          <a href={`mailto:${data.authorityEmail}`} className="text-indigo-400 text-xs hover:underline inline-flex items-center gap-1 mt-0.5">
-            {config?.code === 'GB' ? config.complaint_endpoint : data.authorityEmail} <ExternalLink size={9} />
-          </a>
+      {/* Authority Contact Info */}
+      <div className="px-4 py-3 bg-slate-700/30 border-t border-slate-700">
+          <div className="font-semibold text-white text-sm">{config?.code === 'GB' ? config.authority_levels[0] : (data.routed_authority?.authority_name || data.authority)}</div>
+          {data.routed_authority?.designation && (
+            <div className="text-indigo-400 text-[10px] font-medium">{data.routed_authority.designation}</div>
+          )}
+          
+          <div className="mt-2 flex items-center justify-between text-[10px]">
+            <a href={`mailto:${data.routed_authority?.email || data.authorityEmail}`} className="text-slate-300 hover:text-white hover:underline flex items-center gap-1">
+              <ExternalLink size={9} /> {config?.code === 'GB' ? config.complaint_endpoint : (data.routed_authority?.email || data.authorityEmail)}
+            </a>
+            {data.routed_authority?.phone && (
+              <span className="text-slate-400 text-[10px]">📞 {data.routed_authority.phone}</span>
+            )}
+          </div>
       </div>
+      <SourceCitation verification={data.verification} />
     </div>
   );
 }

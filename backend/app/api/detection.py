@@ -101,26 +101,19 @@ async def detect_damage(
         if result["detections"]
         else "No road damage detected in this image."
     )
-<<<<<<< Updated upstream
-=======
     
     primary_damage_type = (
         result["detections"][0]["damage_type"]
         if result["detections"]
         else "None"
     )
->>>>>>> Stashed changes
 
     detection_record = RoadDamageDetection(
         image_path=str(saved_filename),
         result_image_path=result.get("result_image_filename", ""),
         latitude=latitude,
         longitude=longitude,
-<<<<<<< Updated upstream
-        damage_type="Pothole",
-=======
         damage_type=primary_damage_type,
->>>>>>> Stashed changes
         confidence=primary_confidence,
         severity=severity_enum,
         risk_score=result["overall_risk_score"],
@@ -135,11 +128,7 @@ async def detect_damage(
     await db.refresh(detection_record)
 
     message = (
-<<<<<<< Updated upstream
-        f"AI detected {result['detection_count']} pothole(s). Overall severity: {overall_sev_str}."
-=======
         f"AI detected {result['detection_count']} issue(s). Overall severity: {overall_sev_str}."
->>>>>>> Stashed changes
         if result["detection_count"] > 0
         else "No road damage detected in this image."
     )
@@ -186,11 +175,7 @@ async def create_complaint_from_detection(
     severity_str = detection.severity.value if detection.severity else "Unknown"
     title = f"AI-Detected {detection.damage_type}"
     description = (
-<<<<<<< Updated upstream
-        f"AI-Detected Pothole — Severity: {severity_str}, "
-=======
         f"AI-Detected {detection.damage_type} — Severity: {severity_str}, "
->>>>>>> Stashed changes
         f"Confidence: {round(detection.confidence * 100, 1)}%, "
         f"Risk Score: {round((detection.risk_score or 0) * 100)}/100"
     )

@@ -57,22 +57,63 @@ class RoadSummary(BaseModel):
         from_attributes = True
 
 
+class SourceVerification(BaseModel):
+    source_name: str
+    source_url: Optional[str] = None
+    retrieval_date: Optional[str] = None
+    confidence_level: str
+
+class ContractorInfo(BaseModel):
+    name: str
+    agency: Optional[str] = None
+    contract_value: Optional[Decimal] = None
+    completion_date: Optional[str] = None
+    maintenance_warranty_years: Optional[int] = None
+    complaint_count: int = 0
+    roads_handled: int = 0
+    repeat_failure_flag: bool = False
+
 class RoadDetail(RoadSummary):
     """Full road record including maintenance history and budget breakdown."""
     length_km: Optional[float] = None
+    budget_released: Optional[Decimal] = None
     budget_utilised_pct: Optional[float] = None
+    budget_anomalies: list[str] = Field(default_factory=list)
+    funding_agency: Optional[str] = None
+    source_document_id: Optional[str] = None
+    budget_last_updated: Optional[str] = None
     next_due_date: Optional[str] = None
     source_docs: Optional[str] = None
     accident_count: Optional[int] = None
     accident_source: Optional[str] = None
+    accident_severity_score: Optional[float] = None
+    hotspot_ranking: Optional[int] = None
+    accident_trend: Optional[str] = None
+    risk_classification: Optional[str] = None
     repair_history: list[RepairEvent] = Field(default_factory=list)
     open_complaints: int = 0
     routed_authority: Optional[AuthorityInfo] = None
+    contractor: Optional[ContractorInfo] = None
+    verification: Optional[SourceVerification] = None
 
 
 class RoadListResponse(BaseModel):
     total: int
     roads: list[RoadSummary]
+
+
+class RoadSearchResult(BaseModel):
+    """A single fuzzy search result with confidence score."""
+    confidence_score: float
+    is_exact_match: bool
+    road: RoadDetail
+
+
+class RoadSearchResponse(BaseModel):
+    """Response for GET /api/roads/search"""
+    results: list[RoadSearchResult]
+    exact_match: bool
+    confidence_score: float
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +130,7 @@ class ComplaintCreateRequest(BaseModel):
     issue_type: Optional[str] = Field(None, min_length=2, max_length=100)
     district: str = Field(..., min_length=2, max_length=100)
     state: str = Field(..., min_length=2, max_length=100)
-    country: str = Field(default="India", max_length=100)
+    country: str = Field(max_length=100)
     road_type: Optional[str] = None
     severity: Optional[str] = Field(
         None, description="Low / Medium / High / Critical"
@@ -120,10 +161,7 @@ class ComplaintUpdateRequest(BaseModel):
     assigned_department: Optional[str] = Field(None, max_length=255)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
-<<<<<<< Updated upstream
-=======
     resolution_notes: Optional[str] = Field(None, max_length=5000)
->>>>>>> Stashed changes
 
 
 class ComplaintResponse(BaseModel):
@@ -142,6 +180,13 @@ class ComplaintResponse(BaseModel):
     assigned_department: Optional[str] = None
     authority_email: Optional[str] = None
     escalation: Optional[str] = None
+    
+    # Optional Authority fields for display
+    authority_name: Optional[str] = None
+    authority_designation: Optional[str] = None
+    authority_phone: Optional[str] = None
+    
+    verification: Optional[SourceVerification] = None
     district: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
@@ -155,12 +200,9 @@ class ComplaintResponse(BaseModel):
     expectedDays: int = 21
     overdue: bool = False
     routed_authority: Optional[AuthorityInfo] = None
-<<<<<<< Updated upstream
-=======
     sla_deadline: Optional[datetime] = None
     is_escalated: bool = False
     resolution_notes: Optional[str] = None
->>>>>>> Stashed changes
 
     class Config:
         from_attributes = True
@@ -230,7 +272,7 @@ class CreateComplaintFromDetection(BaseModel):
     longitude: float = Field(..., ge=-180, le=180)
     district: str = Field(..., min_length=2, max_length=100)
     state: str = Field(..., min_length=2, max_length=100)
-    country: str = Field(default="India", max_length=100)
+    country: str = Field(max_length=100)
     road_type: Optional[str] = Field(
         None,
         description="Road type (NH/SH/MDR/ODR/VR/Urban) for jurisdiction routing",
@@ -258,8 +300,6 @@ class DetectionListResponse(BaseModel):
     """Paginated list of detections."""
     total: int
     detections: list[DetectionListItem]
-<<<<<<< Updated upstream
-=======
 
 
 # ---------------------------------------------------------------------------
@@ -311,4 +351,3 @@ class JurisdictionResponse(BaseModel):
     class Config:
         from_attributes = True
 
->>>>>>> Stashed changes

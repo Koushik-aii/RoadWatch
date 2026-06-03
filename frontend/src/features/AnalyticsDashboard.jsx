@@ -2,11 +2,9 @@ import { useMemo, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Gauge, MapPin, RefreshCw } from 'lucide-react';
 import MetricCard from '../components/analytics/MetricCard';
 import { BarListChart, DonutChart, TrendChart } from '../components/analytics/SimpleCharts';
-<<<<<<< Updated upstream
-=======
 import StatsGrid from '../components/analytics/StatsGrid';
 import DangerousRoadsWidget from '../components/analytics/DangerousRoadsWidget';
->>>>>>> Stashed changes
+import AccidentHotspotsWidget from '../components/analytics/AccidentHotspotsWidget';
 import { useAnalytics } from '../hooks/useAnalytics';
 
 const SEVERITIES = ['All', 'Low', 'Medium', 'High', 'Critical'];
@@ -43,11 +41,7 @@ export default function AnalyticsDashboard() {
       <div className="sticky top-0 z-20 border-b border-emerald-900/50 bg-[#07130f]/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div>
-<<<<<<< Updated upstream
-            <h1 className="text-base font-bold">GIS Intelligence</h1>
-=======
             <h1 className="text-base font-bold font-display">GIS Intelligence</h1>
->>>>>>> Stashed changes
             <p className="text-[11px] text-emerald-200/60">Live complaint density, risk, and resolution analytics</p>
           </div>
           <span className="flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-200">
@@ -94,13 +88,10 @@ export default function AnalyticsDashboard() {
       <main className="space-y-4 p-4">
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</div>}
 
-<<<<<<< Updated upstream
-=======
         {/* Platform-wide stats */}
         <StatsGrid />
 
         {/* Quick metrics */}
->>>>>>> Stashed changes
         <section className="grid grid-cols-2 gap-3">
           <MetricCard icon={Activity} label="Total" value={summary.total ?? 0} detail="filtered complaints" tone="cyan" />
           <MetricCard icon={AlertTriangle} label="Critical" value={summary.critical ?? 0} detail="highest severity" tone="red" />
@@ -110,13 +101,13 @@ export default function AnalyticsDashboard() {
 
         <TrendChart data={data?.complaint_trends || []} />
         <DonutChart data={data?.severity_distribution || []} />
-<<<<<<< Updated upstream
-=======
 
         {/* Most Dangerous Roads */}
         <DangerousRoadsWidget />
+        
+        {/* Accident Risk Analytics */}
+        <AccidentHotspotsWidget />
 
->>>>>>> Stashed changes
         <BarListChart title="Department performance" data={data?.department_performance || []} labelKey="department" valueKey="resolution_rate" />
         <BarListChart title="Most reported roads" data={data?.most_reported_roads || []} labelKey="name" valueKey="complaints" />
         <BarListChart title="Critical regions" data={regionRows} labelKey="label" valueKey="risk_score" />

@@ -1,46 +1,16 @@
 """RoadWatch FastAPI application entry point."""
 from contextlib import asynccontextmanager
-<<<<<<< Updated upstream
-=======
 import logging
->>>>>>> Stashed changes
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-<<<<<<< Updated upstream
-=======
 from sqlalchemy.ext.asyncio import AsyncSession
->>>>>>> Stashed changes
 
 from .api import admin, analytics, auth, complaints, detection, officer, roads
 from .config import get_settings
 from .core.exceptions import AppException, app_exception_handler, http_exception_handler
 from .core.middleware import SecurityHeadersMiddleware
-<<<<<<< Updated upstream
-from .database import async_session_maker
-from .models import User, UserRole
-from .services.auth_service import create_user_admin, get_user_by_email
-from .services.file_storage import ensure_upload_dirs
-
-settings = get_settings()
-
-
-async def _bootstrap_admin() -> None:
-    if not settings.bootstrap_admin_email or not settings.bootstrap_admin_password:
-        return
-    async with async_session_maker() as db:
-        existing = await get_user_by_email(db, settings.bootstrap_admin_email)
-        if existing:
-            return
-        await create_user_admin(
-            db,
-            settings.bootstrap_admin_email,
-            settings.bootstrap_admin_password,
-            "System Administrator",
-            UserRole.ADMIN,
-        )
-=======
 from .core.security import hash_password
 from .database import async_session_maker, engine, Base
 from .models import User, UserRole
@@ -86,7 +56,6 @@ async def _bootstrap_demo_accounts() -> None:
                 hashed_password=hash_password("DemoPass123!"),
             )
             db.add(citizen_user)
->>>>>>> Stashed changes
         await db.commit()
 
 
@@ -94,15 +63,9 @@ async def _bootstrap_demo_accounts() -> None:
 async def lifespan(app: FastAPI):
     ensure_upload_dirs()
     try:
-<<<<<<< Updated upstream
-        await _bootstrap_admin()
-    except Exception:
-        pass
-=======
         await _bootstrap_demo_accounts()
     except Exception as e:
         print(f"Bootstrap error: {e}")
->>>>>>> Stashed changes
     yield
 
 

@@ -2,6 +2,7 @@
  * Shared API client with JWT auth and automatic token refresh.
  */
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './authStorage';
+import { setCache, getCache, queueMutation, serializeFormData } from './offlineStorage';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -58,7 +59,30 @@ export async function apiFetch(path, options = {}) {
     }
   }
 
-  let response = await fetch(url, { ...fetchOptions, headers });
+  let response;
+  try {
+    if (!navigator.onLine) {
+      throw new Error('Offline');
+    }
+    response = await fetch(url, { ...fetchOptions, headers });
+  } catch (err) {
+    // OFFLINE MODE INTERCEPTION
+    if (fetchOptions.method === 'POST' || fetchOptions.method === 'PUT' || fetchOptions.method === 'PATCH') {
+      let bodyToQueue = fetchOptions.body;
+      if (bodyToQueue instanceof FormData) {
+        bodyToQueue = await serializeFormData(bodyToQueue);
+      }
+      await queueMutation(path, fetchOptions.method, headers, bodyToQueue);
+      
+      // Return a synthetic successful response so the UI proceeds normally
+      return { id: `queued-${Date.now()}`, status: 'queued', message: 'Action saved offline and will sync when connected.' };
+    } else {
+      // GET requests fallback to cache
+      const cached = await getCache(url);
+      if (cached) return cached;
+      throw new Error('You are offline and no cached data is available.');
+    }
+  }
 
   if (response.status === 401 && !skipAuth) {
     try {
@@ -88,5 +112,12 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (response.status === 204) return null;
-  return response.json();
+  const jsonResponse = await response.json();
+  
+  // Cache successful GET requests
+  if (!fetchOptions.method || fetchOptions.method === 'GET') {
+    await setCache(url, jsonResponse);
+  }
+
+  return jsonResponse;
 }

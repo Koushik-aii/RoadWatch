@@ -35,6 +35,7 @@ from .schemas import (
     ComplaintResponse,
     ComplaintStatusResponse,
     ComplaintUpdateRequest,
+    SourceVerification,
 )
 
 router = APIRouter(prefix="/api/complaints", tags=["complaints"])
@@ -76,12 +77,15 @@ def _build_complaint_response(complaint, authority: AuthorityInfo | None = None)
         expectedDays=data["expectedDays"],
         overdue=data["overdue"],
         routed_authority=routed,
-<<<<<<< Updated upstream
-=======
         sla_deadline=complaint.sla_deadline,
         is_escalated=complaint.is_escalated,
         resolution_notes=complaint.resolution_notes,
->>>>>>> Stashed changes
+        verification=SourceVerification(
+            source_name=complaint.source_name or "User Submission",
+            source_url=complaint.source_url,
+            retrieval_date=str(complaint.source_retrieval_date) if complaint.source_retrieval_date else complaint.created_at.strftime("%Y-%m-%d"),
+            confidence_level=complaint.source_confidence or "Unverified"
+        )
     )
 
 
@@ -150,7 +154,7 @@ async def create_complaint_with_image(
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     issue_type: Optional[str] = Form(None),
-    country: str = Form("India"),
+    country: str = Form(...),
     road_type: Optional[str] = Form(None),
     road_id: Optional[str] = Form(None),
     severity: Optional[str] = Form(None),

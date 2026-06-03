@@ -1,88 +1,139 @@
-import { ExternalLink, AlertTriangle, TrendingUp, Zap } from 'lucide-react';
+import { ExternalLink, AlertTriangle, TrendingUp, ShieldCheck, FileText, Calendar, Building } from 'lucide-react';
 import { useCountry } from '../../context/CountryContext';
 import { useLanguage } from '../../context/LanguageContext';
+import SourceCitation from '../common/SourceCitation';
 
 export default function BudgetCard({ data }) {
   const { config } = useCountry();
   const { t } = useLanguage();
-  const pct = data.utilisedPct;
-  const isOverdue = !!data.flag;
+  
+  if (!data) return null;
+
+  const pct = data.budget_utilised_pct || 0;
+  const anomalies = data.budget_anomalies || [];
+  
+  // Format currency
+  const currencyUnit = config.code === 'GB' ? 'M' : 'Cr';
+  const formatCurrency = (val) => {
+    if (val === null || val === undefined) return 'Unavailable';
+    return `${config.currency}${val} ${currencyUnit}`;
+  };
+
+  const sanctioned = formatCurrency(data.budget_sanctioned);
+  const released = formatCurrency(data.budget_released);
+  const spent = formatCurrency(data.budget_spent);
+
+  const unavailable = <span className="text-slate-500 italic">Unavailable</span>;
 
   return (
-    <div className="rounded-2xl bg-slate-800/80 border-l-4 border-emerald-500 overflow-hidden w-full">
+    <div className="rounded-2xl bg-slate-800/90 border border-emerald-500/30 overflow-hidden w-full shadow-lg">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white text-sm">{t('budgetTitle', { name: data.roadName })}</h3>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-emerald-600">
-            {data.phase}
-          </span>
+      <div className="px-4 pt-4 pb-3 bg-gradient-to-r from-emerald-900/40 to-slate-800/90 border-b border-emerald-500/20">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1 text-emerald-400">
+              <ShieldCheck size={14} />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Public Financials</span>
+            </div>
+            <h3 className="font-bold text-white text-sm leading-tight">{data.name}</h3>
+            {data.segment && <p className="text-emerald-300/70 text-xs mt-0.5">{data.segment}</p>}
+          </div>
         </div>
-        <a
-          href={data.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-emerald-400 text-[10px] hover:underline mt-1"
-        >
-          <ExternalLink size={9} /> {t('budgetSource')} {data.source} — {data.sourceUrl.replace('https://', '')}
-        </a>
       </div>
 
-      {/* Budget Numbers */}
-      <div className="px-4 pb-3 grid grid-cols-2 gap-3">
-        <div className="bg-slate-700/50 rounded-xl p-3 text-center">
-          <div className="text-slate-400 text-[10px] uppercase tracking-wide">{t('budgetSanctioned')}</div>
-          <div className="text-white font-bold text-lg mt-0.5">{config.currency}{data.sanctioned} {config.code === 'GB' ? 'M' : 'Cr'}</div>
+      {/* Anomaly Alerts */}
+      {anomalies.length > 0 && (
+        <div className="mx-4 mt-3 mb-1 space-y-1.5">
+          {anomalies.map((anomaly, idx) => (
+            <div key={idx} className="flex items-start gap-2 bg-red-900/30 border border-red-700/50 rounded-lg px-2.5 py-2">
+              <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-red-200/90 leading-snug">
+                <span className="font-bold text-red-400 mr-1">Alert:</span>
+                {anomaly}
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="bg-slate-700/50 rounded-xl p-3 text-center">
-          <div className="text-slate-400 text-[10px] uppercase tracking-wide">{t('budgetDisbursed')}</div>
-          <div className="text-emerald-400 font-bold text-lg mt-0.5">{config.currency}{data.disbursed} {config.code === 'GB' ? 'M' : 'Cr'}</div>
+      )}
+
+      {/* Budget Numbers */}
+      <div className="px-4 py-3 grid grid-cols-3 gap-2">
+        <div className="bg-slate-700/40 rounded-xl p-2.5 text-center border border-slate-600/30">
+          <div className="text-slate-400 text-[9px] font-semibold uppercase tracking-wider">Sanctioned</div>
+          <div className={`font-bold text-sm mt-0.5 ${data.budget_sanctioned ? 'text-white' : 'text-slate-500 italic font-medium'}`}>
+            {sanctioned}
+          </div>
+        </div>
+        <div className="bg-slate-700/40 rounded-xl p-2.5 text-center border border-slate-600/30">
+          <div className="text-slate-400 text-[9px] font-semibold uppercase tracking-wider">Released</div>
+          <div className={`font-bold text-sm mt-0.5 ${data.budget_released ? 'text-indigo-300' : 'text-slate-500 italic font-medium'}`}>
+            {released}
+          </div>
+        </div>
+        <div className="bg-slate-700/40 rounded-xl p-2.5 text-center border border-slate-600/30">
+          <div className="text-slate-400 text-[9px] font-semibold uppercase tracking-wider">Spent</div>
+          <div className={`font-bold text-sm mt-0.5 ${data.budget_spent ? 'text-emerald-400' : 'text-slate-500 italic font-medium'}`}>
+            {spent}
+          </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="px-4 pb-3">
-        <div className="flex justify-between text-[10px] text-slate-400 mb-1.5">
-          <span className="flex items-center gap-1"><TrendingUp size={10} /> {t('budgetUtilisation')}</span>
-          <span className="font-semibold text-emerald-400">{t('budgetUsed', { pct })}</span>
-        </div>
-        <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-700"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Overdue Warning */}
-      {data.flag && (
-        <div className="mx-4 mb-3 flex items-start gap-2 bg-red-900/40 border border-red-700/60 rounded-xl px-3 py-2.5">
-          <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
-          <div className="text-xs">
-            <span className="font-semibold text-red-400">{t('budgetOverdueAlert')}</span>
-            <span className="text-red-300/80 ml-1">
-              {data.flag}
-            </span>
+      {data.budget_sanctioned > 0 && data.budget_spent >= 0 && (
+        <div className="px-4 pb-3">
+          <div className="flex justify-between text-[10px] text-slate-400 mb-1.5">
+            <span className="flex items-center gap-1 font-medium"><TrendingUp size={11} className="text-emerald-400"/> Utilization</span>
+            <span className="font-bold text-emerald-400">{pct.toFixed(1)}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-slate-700/80 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${pct > 100 ? 'bg-red-500' : 'bg-gradient-to-r from-emerald-500 to-emerald-400'}`}
+              style={{ width: `${Math.min(pct, 100)}%` }}
+            />
           </div>
         </div>
       )}
 
-      {/* Accident Data */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-700/40 text-[10px]">
-        <div className="flex items-center gap-1.5 text-slate-300">
-          <Zap size={11} className="text-yellow-400" />
-          <span className="text-yellow-400 font-bold">{t('budgetAccidents', { count: data.accidentCount })}</span>
-          <span className="text-slate-500">{t('budgetAccidentsSub')}</span>
+      {/* Detailed Source Citation */}
+      <div className="border-t border-slate-700/60 bg-slate-800/60 px-4 py-3 text-[10px] space-y-2">
+        <div className="text-slate-500 font-bold uppercase tracking-widest mb-1">Source Citation</div>
+        
+        <div className="grid grid-cols-2 gap-2 text-slate-300">
+          <div className="flex items-start gap-1.5">
+            <Building size={11} className="text-slate-500 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-slate-500 text-[8px] uppercase">Funding Agency</div>
+              <div className="font-medium truncate" title={data.funding_agency}>{data.funding_agency || unavailable}</div>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-1.5">
+            <FileText size={11} className="text-slate-500 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-slate-500 text-[8px] uppercase">Document ID</div>
+              <div className="font-medium truncate" title={data.source_document_id}>{data.source_document_id || unavailable}</div>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-1.5">
+            <Calendar size={11} className="text-slate-500 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-slate-500 text-[8px] uppercase">Last Updated</div>
+              <div className="font-medium">{data.budget_last_updated || unavailable}</div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-1.5">
+            <Calendar size={11} className="text-slate-500 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-slate-500 text-[8px] uppercase">Last Updated</div>
+              <div className="font-medium">{data.budget_last_updated || unavailable}</div>
+            </div>
+          </div>
         </div>
-        <a
-          href={data.accidentSourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 hover:underline"
-        >
-          {data.accidentSource} <ExternalLink size={9} />
-        </a>
       </div>
+      
+      <SourceCitation verification={data.verification} />
     </div>
   );
 }

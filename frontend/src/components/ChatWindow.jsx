@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MapPin, Send, Mic, Activity, Camera, AlertTriangle, Info, Globe, ChevronRight, Bot, User } from 'lucide-react';
 import { detectIntent } from '../services/intentEngine';
 import { getComplaint, listComplaints } from '../services/complaintsApi';
-import { MOCK_COMPLAINTS } from '../data/mockData';
-import { QUICK_REPLIES } from '../data/mockData';
+import { apiFetch } from '../services/apiClient';
 import { resolveAuthority } from '../services/jurisdictionService';
 import { useCountry } from '../context/CountryContext';
 import { CardSkeleton } from './SkeletonLoaders';
@@ -12,6 +11,7 @@ import RoadInfoCard from './cards/RoadInfoCard';
 import BudgetCard from './cards/BudgetCard';
 import ReportIssueCard from './cards/ReportIssueCard';
 import TrackComplaintCard from './cards/TrackComplaintCard';
+import RoadListCard from './cards/RoadListCard';
 import { useLanguage } from '../context/LanguageContext';
 import { getQrLabel, getQrCmd } from '../data/translations';
 
@@ -24,43 +24,24 @@ const WELCOME = (t) => ({
   quickReplies: t('qrDefault'),
 });
 
-// ── Not found error card ──────────────────────────────────────
-const NOT_FOUND_MSG = (roadKey, t) => ({
-  role: 'bot',
-  intent: 'notFound',
-  text: t('botNotFound'),
-  data: { road: roadKey, jurisdiction: resolveAuthority('Andhra Pradesh', 'Krishna', 'SH') },
-  quickReplies: t('qrNotFound'),
-});
-
 // ── Default fallback ─────────────────────────────────────────
 const DEFAULT_MSG = (text, t) => ({
   role: 'bot',
   intent: 'default',
-  text: t('botDefault', { text }),
+  text: `I'm not quite sure how to help with that. Try asking about a specific road (e.g. "roads in Vijayawada"), reporting an issue, or checking a budget.`,
   quickReplies: t('qrDefault'),
 });
 
 // ── Render card by intent ────────────────────────────────────
-function BotCard({ message, onComplaintFiled }) {
-  const { intent, data, roadType } = message;
+function BotCard({ message, onComplaintFiled, onSelectRoad }) {
+  const { intent, data, roadType, rawId } = message;
+  
   if (intent === 'roadInfo') return <RoadInfoCard data={data} />;
+  if (intent === 'roadDiscovery') return <RoadListCard data={data} onSelectRoad={onSelectRoad} />;
   if (intent === 'budget') return <BudgetCard data={data} />;
   if (intent === 'report') return <ReportIssueCard data={data} roadType={roadType} onComplaintFiled={onComplaintFiled} />;
   if (intent === 'track') return <TrackComplaintCard data={data} />;
-  if (intent === 'notFound') return (
-    <div className="rounded-2xl bg-slate-800/80 border-l-4 border-amber-500 overflow-hidden w-full">
-      <div className="px-4 py-3 flex items-start gap-3">
-        <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-amber-300 text-xs font-semibold">{message.t ? message.t('notFoundTitle') : 'Road not in database'}</p>
-          <p className="text-slate-400 text-[10px] mt-1">{message.t ? message.t('notFoundDesc') : 'Generic Executive Engineer assigned for manual review:'}</p>
-          <p className="text-white text-xs font-medium mt-1">{data.jurisdiction.authority_name}</p>
-          <a href={`mailto:${data.jurisdiction.email}`} className="text-indigo-400 text-[10px] hover:underline">{data.jurisdiction.email}</a>
-        </div>
-      </div>
-    </div>
-  );
+  
   return null;
 }
 
@@ -94,13 +75,19 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Conversation Memory State
+  const [sessionMemory, setSessionMemory] = useState({
+    lastRoadResults: null,
+    lastComplaintResults: null,
+    lastBudgetResults: null
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
   useEffect(() => {
     if (initialTrigger) {
-      // Wrap in an async IIFE — React effects must not return Promises
       (async () => {
         await handleSend(initialTrigger);
         onClearTrigger?.();
@@ -108,101 +95,213 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
     }
   }, [initialTrigger]);
 
+  async function searchRoadsApi(query) {
+    try {
+      const res = await apiFetch(`api/roads/search?q=${encodeURIComponent(query)}`);
+      return res;
+    } catch (err) {
+      console.error("Road search failed:", err);
+      if (err.message.includes('offline')) {
+        return { error: 'offline' };
+      }
+      return { results: [], exact_match: false };
+    }
+  }
+
+  async function fetchRoadDetails(roadId) {
+    try {
+      const res = await apiFetch(`api/roads/${encodeURIComponent(roadId)}`);
+      return res;
+    } catch (err) {
+      console.error("Failed to fetch road details:", err);
+      if (err.message.includes('offline')) {
+        return { error: 'offline' };
+      }
+      return null;
+    }
+  }
+
   async function handleSend(text = input) {
     const trimmed = text.trim();
     if (!trimmed) return;
     setInput('');
 
-    // Add user message immediately
     const userMsg = { id: Date.now(), role: 'user', text: trimmed };
     setMessages(prev => [...prev, userMsg]);
-
-    // Show typing indicator while Gemini classifies (or fallback runs)
     setIsTyping(true);
 
     try {
-      // detectIntent is now async — awaits Gemini with a 2 s timeout fallback
       const result = await detectIntent(trimmed);
-      let botMsg;
+      let botMsg = { id: Date.now() + 1, role: 'bot' };
 
-      if (result.intent === 'roadInfo') {
+      if (result.intent === 'greeting') {
         botMsg = {
-          id: Date.now() + 1,
-          role: 'bot',
-          intent: 'roadInfo',
-          text: t('botRoadInfo', { name: result.data.name }),
-          data: result.data,
-          quickReplies: t('qrRoadInfo'),
+          ...botMsg,
+          intent: 'greeting',
+          text: t('welcomeText') || "Hello! I am your RoadWatch assistant. How can I help you today?",
+          quickReplies: t('qrDefault'),
         };
-      } else if (result.intent === 'budget') {
+      } 
+      else if (result.intent === 'roadDiscovery') {
+        const searchRes = await searchRoadsApi(result.query);
+        
+        if (searchRes.error === 'offline') {
+           botMsg = {
+             ...botMsg,
+             intent: 'default',
+             text: `You are currently offline, and I don't have "${result.query}" saved in your local cache. Please connect to the internet to search for new roads.`,
+             quickReplies: t('qrDefault')
+           };
+        } else if (searchRes.results.length === 0) {
+           botMsg = {
+             ...botMsg,
+             intent: 'default',
+             text: `I couldn't find any roads matching "${result.query}". Try searching with a broader term or different district.`,
+             quickReplies: t('qrDefault')
+           };
+        } else if (searchRes.exact_match) {
+           // We have an exact match -> show RoadInfoCard
+           const topRoad = searchRes.results[0].road;
+           setSessionMemory(prev => ({ ...prev, lastRoadResults: searchRes.results }));
+           botMsg = {
+             ...botMsg,
+             intent: 'roadInfo',
+             text: t('botRoadInfo', { name: topRoad.name }) || `Here is the info for ${topRoad.name}:`,
+             data: topRoad,
+             quickReplies: t('qrRoadInfo')
+           };
+        } else {
+           // Multiple fuzzy matches -> show RoadListCard
+           setSessionMemory(prev => ({ ...prev, lastRoadResults: searchRes.results }));
+           const topMatch = searchRes.results[0]?.road;
+           const loc = topMatch?.district || topMatch?.state || "your region";
+           botMsg = {
+             ...botMsg,
+             intent: 'roadDiscovery',
+             text: `I couldn't find an exact match for that specific road. However, here are some roads in ${loc} that might help:`,
+             data: searchRes.results, // Pass the search results array
+             quickReplies: t('qrDefault')
+           };
+        }
+      else if (result.intent === 'budget' || result.intent === 'analytics') {
+        let targetRoad = null;
+        let searchRes = null;
+        
+        // 1. Try searching the query directly
+        if (result.query) {
+           searchRes = await searchRoadsApi(result.query);
+           if (searchRes.results.length > 0 && searchRes.exact_match) {
+              targetRoad = searchRes.results[0].road;
+           }
+        }
+        
+        // 2. Fallback to memory
+        if (!targetRoad && sessionMemory.lastRoadResults && sessionMemory.lastRoadResults.length > 0) {
+           targetRoad = sessionMemory.lastRoadResults[0].road;
+        }
+
+        if (targetRoad) {
+           botMsg = {
+             ...botMsg,
+             intent: result.intent,
+             text: result.intent === 'budget' ? `Budget details for ${targetRoad.name}:` : `Analytics for ${targetRoad.name}:`,
+             data: targetRoad,
+             quickReplies: t('qrBudget')
+           };
+        } else if (searchRes && searchRes.results.length > 0) {
+           // Show regional list
+           setSessionMemory(prev => ({ ...prev, lastRoadResults: searchRes.results }));
+           const topMatch = searchRes.results[0]?.road;
+           const loc = topMatch?.district || topMatch?.state || "your region";
+           botMsg = {
+             ...botMsg,
+             intent: 'roadDiscovery',
+             text: `I found multiple roads in ${loc}. Which road would you like ${result.intent} details for?`,
+             data: searchRes.results,
+             quickReplies: t('qrDefault')
+           };
+        } else {
+           botMsg = {
+             ...botMsg,
+             intent: 'default',
+             text: `Which road's ${result.intent} would you like to see? You can specify a city or road name.`,
+             quickReplies: t('qrDefault')
+           };
+        }
+      } 
+      else if (result.intent === 'report') {
         botMsg = {
-          id: Date.now() + 1,
-          role: 'bot',
-          intent: 'budget',
-          text: t('botBudget', { name: result.data.roadName }),
-          data: result.data,
-          quickReplies: t('qrBudget'),
-        };
-      } else if (result.intent === 'report') {
-        botMsg = {
-          id: Date.now() + 1,
-          role: 'bot',
+          ...botMsg,
           intent: 'report',
           text: t('botReport'),
           data: result.data,
           roadType: result.roadType,
           quickReplies: t('qrReport'),
         };
-      } else if (result.intent === 'track') {
+      } 
+      else if (result.intent === 'track') {
         let trackData = null;
         const rawId = result.rawId;
 
-        if (rawId && navigator.onLine) {
+        if (rawId) {
           try {
             trackData = await getComplaint(rawId);
-          } catch {
-            trackData = MOCK_COMPLAINTS[rawId] || null;
-          }
-        } else if (rawId) {
-          trackData = MOCK_COMPLAINTS[rawId] || null;
-        }
-
-        if (!trackData && navigator.onLine) {
-          try {
-            const list = await listComplaints({ page: 1, page_size: 1 });
-            trackData = list.items?.[0] || null;
           } catch { /* ignore */ }
         }
 
-        const id = rawId || trackData?.id || 'a complaint';
-        botMsg = trackData
-          ? {
-              id: Date.now() + 1,
-              role: 'bot',
-              intent: 'track',
-              text: t('botTrack', { id }),
-              data: trackData,
-              quickReplies: t('qrTrack'),
+        if (!trackData) {
+          try {
+            const list = await listComplaints({ page: 1, page_size: 5 });
+            if (list.items && list.items.length > 0) {
+              // If user asks "my complaints", show the most recent one for now
+              // (In the future, we could add a ComplaintListCard)
+              trackData = list.items[0];
             }
-          : {
-              id: Date.now() + 1,
-              role: 'bot',
-              intent: 'default',
-              text: rawId
-                ? `Complaint ${rawId} was not found. Check the ID or file a new report.`
-                : 'Please provide a complaint ID (e.g. RW-2044) to track status.',
-              quickReplies: t('qrTrack'),
-            };
-      } else if (result.intent === 'notFound') {
-        botMsg = { id: Date.now() + 1, ...NOT_FOUND_MSG(result.roadKey, t) };
-      } else {
-        botMsg = { id: Date.now() + 1, ...DEFAULT_MSG(trimmed, t) };
+          } catch { /* ignore */ }
+        }
+
+        if (trackData) {
+          botMsg = {
+            ...botMsg,
+            intent: 'track',
+            text: t('botTrack', { id: trackData.complaint_id || trackData.uuid }),
+            data: trackData,
+            quickReplies: t('qrTrack'),
+          };
+        } else {
+          botMsg = {
+            ...botMsg,
+            intent: 'default',
+            text: rawId
+              ? `Complaint ${rawId} was not found. Check the ID or file a new report.`
+              : 'You have no active complaints. Please provide a complaint ID (e.g. RW-2044) to track status.',
+            quickReplies: t('qrTrack'),
+          };
+        }
+      } 
+      else {
+        botMsg = { ...botMsg, ...DEFAULT_MSG(trimmed, t) };
       }
 
       setMessages(prev => [...prev, botMsg]);
     } finally {
-      // Always hide the typing indicator, even if something throws unexpectedly
       setIsTyping(false);
+    }
+  }
+
+  // Handle selection from RoadListCard
+  async function handleSelectRoad(roadId) {
+    const road = await fetchRoadDetails(roadId);
+    if (road) {
+      const botMsg = {
+        id: Date.now(),
+        role: 'bot',
+        intent: 'roadInfo',
+        text: t('botRoadInfo', { name: road.name }) || `Here is the info for ${road.name}:`,
+        data: road,
+        quickReplies: t('qrRoadInfo')
+      };
+      setMessages(prev => [...prev, botMsg]);
     }
   }
 
@@ -240,7 +339,6 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
           </p>
         </div>
         
-        {/* Language Switcher */}
         <select
           value={lang}
           onChange={(e) => setLang(e.target.value)}
@@ -264,9 +362,7 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-0" id="chat-messages">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col gap-1.5 ${msg.role === 'user' ? 'items-end px-3' : 'items-start'}`}>
-            {/* Bubble row */}
             <div className={`flex items-end gap-2 max-w-full ${msg.role === 'user' ? 'flex-row-reverse' : 'px-3'}`}>
-              {/* Avatar */}
               {msg.role === 'bot' && (
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 mb-0.5">
                   <Bot size={13} className="text-white" />
@@ -277,8 +373,6 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
                   <User size={13} className="text-slate-300" />
                 </div>
               )}
-
-              {/* Text bubble */}
               <div className={`px-3.5 py-2.5 rounded-2xl text-xs max-w-[78%] leading-relaxed whitespace-pre-line ${
                 msg.role === 'user'
                   ? 'bg-indigo-600 text-white rounded-br-sm'
@@ -288,14 +382,12 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
               </div>
             </div>
 
-            {/* Card (bot only) */}
-            {msg.role === 'bot' && msg.data && (
+            {msg.role === 'bot' && (msg.data || msg.intent === 'roadDiscovery') && (
               <div className="px-3 w-full max-w-[calc(100%-2.25rem)] self-start ml-9">
-                <BotCard message={msg} />
+                <BotCard message={msg} onSelectRoad={handleSelectRoad} />
               </div>
             )}
 
-            {/* Quick Replies */}
             {msg.role === 'bot' && msg.quickReplies && (
               <div className="flex flex-wrap gap-1.5 px-3 ml-9">
                 {msg.quickReplies.map((qr, idx) => {
@@ -316,7 +408,6 @@ export default function ChatWindow({ initialTrigger, onClearTrigger }) {
           </div>
         ))}
 
-        {/* Typing indicator with skeleton */}
         {isTyping && (
           <div className="flex flex-col gap-2">
             <TypingIndicator />

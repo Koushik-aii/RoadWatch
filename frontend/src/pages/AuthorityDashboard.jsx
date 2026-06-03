@@ -1,9 +1,13 @@
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, LogOut, ArrowLeft, BarChart3, Activity, AlertTriangle, CheckCircle2, Clock3 } from 'lucide-react';
+import { Shield, LogOut, ArrowLeft, BarChart3, Activity, AlertTriangle, CheckCircle2, Clock3, AlertCircle, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ComplaintTable from '../components/authority/ComplaintTable';
 import ComplaintTimeline from '../components/authority/ComplaintTimeline';
+import HighRiskCorridorsWidget from '../components/authority/HighRiskCorridorsWidget';
+import AuthorityMapWidget from '../components/authority/AuthorityMapWidget';
+import RecurringContractorsWidget from '../components/authority/RecurringContractorsWidget';
+import DistrictAnalyticsWidget from '../components/authority/DistrictAnalyticsWidget';
 import AnimatedCounter from '../components/ui/AnimatedCounter';
 import { MOCK_AUTHORITY_COMPLAINTS } from '../data/mockAuthority';
 
@@ -19,11 +23,11 @@ export default function AuthorityDashboard() {
     );
   }, []);
 
-  // Stats
+  // Operational Metrics
   const total = complaints.length;
-  const resolved = complaints.filter(c => c.status === 'Resolved').length;
-  const critical = complaints.filter(c => c.severity === 'Critical').length;
-  const avgConf = complaints.reduce((sum, c) => sum + (c.ai_confidence || 0), 0) / (total || 1);
+  const pending = complaints.filter(c => c.status !== 'Resolved').length;
+  const slaViolations = Math.floor(pending * 0.15); // Simulated overdue from mock
+  const repairBacklog = complaints.filter(c => c.status === 'Assigned').length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -55,42 +59,56 @@ export default function AuthorityDashboard() {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
-        {/* Stats Grid */}
+        {/* Top-Level Operational Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
             icon={Activity}
-            label="Total Complaints"
+            label="Total Volume"
             value={total}
             tone="cyan"
+            detail="Complaints registered"
+          />
+          <StatCard
+            icon={AlertCircle}
+            label="Pending Work"
+            value={pending}
+            tone="amber"
+            detail="Unresolved incidents"
           />
           <StatCard
             icon={AlertTriangle}
-            label="Critical"
-            value={critical}
+            label="SLA Violations"
+            value={slaViolations}
             tone="red"
+            detail="Mandates breached"
           />
           <StatCard
-            icon={CheckCircle2}
-            label="Resolved"
-            value={resolved}
-            tone="emerald"
-            detail={`${total > 0 ? Math.round((resolved / total) * 100) : 0}% rate`}
-          />
-          <StatCard
-            icon={Clock3}
-            label="Avg AI Confidence"
-            value={Math.round(avgConf * 100)}
-            suffix="%"
+            icon={Wrench}
+            label="Repair Backlog"
+            value={repairBacklog}
             tone="purple"
+            detail="Awaiting contractor deployment"
           />
         </div>
 
+        {/* Maps and High Risk */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AuthorityMapWidget />
+          <HighRiskCorridorsWidget />
+        </div>
+
+        {/* Accountability */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RecurringContractorsWidget />
+          <DistrictAnalyticsWidget />
+        </div>
+
         {/* Complaint Table */}
-        <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-4 lg:p-5">
+        <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-4 lg:p-5 mt-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-display font-bold text-base">Complaint Management</h2>
-              <p className="text-slate-500 text-[10px] mt-0.5">View, filter, and manage citizen complaints</p>
+              <h2 className="font-display font-bold text-base">Complaint Dispatch Queue</h2>
+              <p className="text-slate-500 text-[10px] mt-0.5">Prioritize, route, and manage field operations</p>
             </div>
           </div>
 

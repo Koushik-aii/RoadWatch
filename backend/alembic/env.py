@@ -23,10 +23,10 @@ target_metadata = Base.metadata
 
 sync_url = os.getenv(
     "DATABASE_URL_SYNC",
-    os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/roadwatch"),
+    os.getenv("DATABASE_URL", "sqlite:///./roadwatch.db"),
 )
-if sync_url.startswith("postgresql+asyncpg://"):
-    sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+if sync_url.startswith("sqlite+aiosqlite:///"):
+    sync_url = sync_url.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
 
 config.set_main_option("sqlalchemy.url", sync_url)
 

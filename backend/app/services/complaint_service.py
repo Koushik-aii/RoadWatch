@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
 from ..core.exceptions import NotFoundError, ValidationError
-from ..models import Complaint, ComplaintStatus, OfficerZone, Road, SeverityLevel, User, UserRole
+from ..models import Complaint, ComplaintRoutingHistory, ComplaintStatus, OfficerZone, Road, SeverityLevel, User, UserRole
 from ..utils.complaint_helpers import (
     days_since,
     is_overdue,
@@ -22,6 +22,7 @@ from ..utils.complaint_helpers import (
 )
 from .file_storage import image_url
 from .jurisdiction_service import get_road_type_from_db, resolve_authority
+from .sla_service import calculate_sla_days
 
 settings = get_settings()
 SEVERITY_FROM_ISSUE = {
@@ -104,7 +105,17 @@ def complaint_to_frontend_dict(
     filed = complaint.created_at
     filed_str = filed.strftime("%Y-%m-%d") if filed else ""
     elapsed = days_since(filed)
-    sla = settings.sla_days_default
+    
+    if complaint.sla_deadline and filed:
+        deadline = complaint.sla_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        expected_days = max(1, (deadline - (filed if filed.tzinfo else filed.replace(tzinfo=timezone.utc))).days)
+        is_past_due = deadline < datetime.now(timezone.utc)
+        overdue_val = is_past_due and stage < 2
+    else:
+        expected_days = settings.sla_days_default
+        overdue_val = is_overdue(filed, expected_days) and stage < 2
 
     return {
         "id": complaint.complaint_number,
@@ -134,8 +145,8 @@ def complaint_to_frontend_dict(
         "updated_at": complaint.updated_at.isoformat() if complaint.updated_at else None,
         "resolvedDate": filed_str if stage == 2 else None,
         "daysElapsed": elapsed,
-        "expectedDays": sla,
-        "overdue": is_overdue(filed, sla) and stage < 2,
+        "expectedDays": expected_days,
+        "overdue": overdue_val,
         "image_url": image_url(complaint.image_path),
         "photo": image_url(complaint.image_path),
         "road_id": str(complaint.road_id) if complaint.road_id else None,
@@ -152,7 +163,7 @@ async def create_complaint(
     longitude: float,
     district: str,
     state: str,
-    country: str = "India",
+    country: str,
     road_type: str | None = None,
     road_id: uuid.UUID | None = None,
     severity: SeverityLevel | None = None,
@@ -186,16 +197,11 @@ async def create_complaint(
     final_description = (description or issue_type or final_title).strip()
     sev = infer_severity(final_title, severity)
 
-    try:
-        point = from_shape(Point(longitude, latitude), srid=4326)
-    except Exception:
-        point = None
-<<<<<<< Updated upstream
-=======
+    point = f"{latitude:.4f}, {longitude:.4f}"
         
     from datetime import timedelta
-    sla_deadline = datetime.now(timezone.utc) + timedelta(days=7)
->>>>>>> Stashed changes
+    calculated_sla_days = calculate_sla_days(final_title, final_description)
+    sla_deadline = datetime.now(timezone.utc) + timedelta(days=calculated_sla_days)
 
     complaint = Complaint(
         id=new_uuid,
@@ -211,6 +217,9 @@ async def create_complaint(
         assigned_department=authority.authority_name,
         authority_email=authority.email,
         escalation_contact=authority.escalation,
+        authority_name=authority.authority_name,
+        authority_designation=authority.designation,
+        authority_phone=authority.phone,
         district=district,
         state=state,
         country=country,
@@ -218,13 +227,22 @@ async def create_complaint(
         road_id=road_id,
         issue_type=issue_type or final_title,
         reporter_id=reporter_id,
-<<<<<<< Updated upstream
-=======
         sla_deadline=sla_deadline,
         is_escalated=False,
->>>>>>> Stashed changes
     )
     db.add(complaint)
+    
+    routing_history = ComplaintRoutingHistory(
+        id=uuid.uuid4(),
+        complaint_id=new_uuid,
+        authority_name=authority.authority_name,
+        designation=authority.designation,
+        email=authority.email,
+        phone=authority.phone,
+        notes="Initial automated routing based on jurisdiction map."
+    )
+    db.add(routing_history)
+    
     await db.flush()
     await db.refresh(complaint)
     return complaint, authority
@@ -332,13 +350,10 @@ async def update_complaint(
         complaint.severity = SeverityLevel(updates["severity"])
     if "assigned_department" in updates and updates["assigned_department"] is not None:
         complaint.assigned_department = updates["assigned_department"]
-<<<<<<< Updated upstream
-=======
     if "resolution_notes" in updates:
         complaint.resolution_notes = updates["resolution_notes"]
     if "is_escalated" in updates:
         complaint.is_escalated = updates["is_escalated"]
->>>>>>> Stashed changes
     if "latitude" in updates and updates["latitude"] is not None:
         complaint.latitude = updates["latitude"]
     if "longitude" in updates and updates["longitude"] is not None:

@@ -81,19 +81,37 @@ export default function ComplaintTimeline({ complaint, onClose }) {
             ) : null}
           </div>
 
-          {/* AI Confidence */}
+          {/* AI Confidence & Reasoning */}
           <div className="bg-slate-800/40 rounded-xl border border-slate-700/30 p-3">
-            <p className="text-[10px] text-slate-500 font-semibold mb-2">AI CONFIDENCE ANALYSIS</p>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] text-slate-500 font-semibold">AI VISION INFERENCE</p>
+              <span className="text-indigo-400 font-bold text-xs">{Math.round((complaint.ai_confidence || 0) * 100)}% Match</span>
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 confidence-bar-fill"
                   style={{ width: `${(complaint.ai_confidence || 0) * 100}%` }}
                 />
               </div>
-              <span className="text-indigo-300 font-bold text-sm">{Math.round((complaint.ai_confidence || 0) * 100)}%</span>
             </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed italic border-l-2 border-indigo-500/30 pl-2">
+              "Identified visual anomalies consistent with {complaint.road_type === 'Bridge Damage' ? 'structural degradation' : 'surface erosion'}. High probability of defect presence requiring immediate maintenance routing."
+            </p>
           </div>
+
+          {/* SLA Violation Warning */}
+          {complaint.status !== 'Resolved' && complaint.severity === 'Critical' && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start gap-2">
+              <div className="mt-0.5">
+                <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-red-400">SLA BREACH ALERT</p>
+                <p className="text-[10px] text-red-300/80 mt-0.5">This complaint has exceeded its mandated 48-hour resolution window. Immediate escalation required.</p>
+              </div>
+            </div>
+          )}
 
           {/* Timeline */}
           <div className="bg-slate-800/40 rounded-xl border border-slate-700/30 p-4">

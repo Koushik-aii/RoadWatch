@@ -27,13 +27,6 @@ function createHeatmapLayer(points, options = {}) {
       points.forEach(([lat, lng, intensity = 0.5]) => {
         const point = map.latLngToContainerPoint([lat, lng]);
         const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
-<<<<<<< Updated upstream
-        const alpha = Math.max(0.12, Math.min(0.9, intensity));
-        gradient.addColorStop(0, `rgba(239, 68, 68, ${alpha})`);
-        gradient.addColorStop(0.35, `rgba(245, 158, 11, ${alpha * 0.65})`);
-        gradient.addColorStop(0.72, `rgba(34, 197, 94, ${alpha * 0.28})`);
-        gradient.addColorStop(1, 'rgba(34, 197, 94, 0)');
-=======
         const alpha = Math.max(0.15, Math.min(0.9, intensity));
         
         const theme = options.theme || 'complaints';
@@ -83,7 +76,6 @@ function createHeatmapLayer(points, options = {}) {
         gradient.addColorStop(0.5, midStr);
         gradient.addColorStop(1, edgeStr);
         
->>>>>>> Stashed changes
         ctx.filter = `blur(${blur / 5}px)`;
         ctx.fillStyle = gradient;
         ctx.beginPath();

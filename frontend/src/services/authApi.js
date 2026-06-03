@@ -90,25 +90,16 @@ export async function officerSetZones(zones) {
   });
 }
 
-<<<<<<< Updated upstream
-export async function officerUpdateComplaintStatus(complaintId, status, assignedDepartment) {
-=======
 export async function officerGetMetrics() {
   return apiFetch('/api/officer/metrics');
 }
 
 export async function officerUpdateComplaintStatus(complaintId, status, assignedDepartment, resolutionNotes) {
->>>>>>> Stashed changes
   return apiFetch(`/api/officer/complaints/${complaintId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({
       status,
       assigned_department: assignedDepartment || undefined,
-<<<<<<< Updated upstream
-    }),
-  });
-}
-=======
       resolution_notes: resolutionNotes || undefined,
     }),
   });
@@ -167,4 +158,3 @@ export async function adminDeleteJurisdiction(jid) {
     method: 'DELETE',
   });
 }
->>>>>>> Stashed changes

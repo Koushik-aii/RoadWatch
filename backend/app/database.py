@@ -8,23 +8,13 @@ from .config import get_settings
 
 settings = get_settings()
 
-<<<<<<< Updated upstream
-# Normalize DATABASE_URL for asyncpg
-=======
 # Normalize DATABASE_URL for asyncpg if someone is still using PostgreSQL
->>>>>>> Stashed changes
 _database_url = settings.database_url
 if _database_url.startswith("postgresql://"):
     _database_url = _database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 elif _database_url.startswith("postgres://"):
     _database_url = _database_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
-<<<<<<< Updated upstream
-engine = create_async_engine(
-    _database_url,
-    echo=settings.debug,
-    pool_pre_ping=True,
-=======
 # Check if SQLite to adjust connection arguments
 connect_args = {}
 if _database_url.startswith("sqlite"):
@@ -34,7 +24,6 @@ engine = create_async_engine(
     _database_url,
     echo=settings.debug,
     connect_args=connect_args,
->>>>>>> Stashed changes
 )
 
 async_session_maker = async_sessionmaker(
