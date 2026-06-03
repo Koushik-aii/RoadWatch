@@ -23,8 +23,13 @@ export default function ProtectedRoute({ children, roles }) {
 
   if (roles?.length && !roles.includes(user.role)) {
     if (user.role === 'Admin') return <Navigate to="/admin" replace />;
+<<<<<<< Updated upstream
     if (user.role === 'Road Authority Officer') return <Navigate to="/officer" replace />;
     return <Navigate to="/" replace />;
+=======
+    if (user.role === 'Road Authority Officer') return <Navigate to="/authority" replace />;
+    return <Navigate to="/app" replace />;
+>>>>>>> Stashed changes
   }
 
   return children;

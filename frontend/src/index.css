@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* ── Reset ─────────────────────────────── */
@@ -172,3 +172,86 @@ html, body, #root {
 .ai-badge-pulse {
   animation: badge-pulse 2s ease-in-out infinite;
 }
+<<<<<<< Updated upstream
+=======
+
+/* ── AI Label Glow ─────────────────────── */
+@keyframes ai-glow {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+.ai-label-glow {
+  animation: ai-glow 2.5s ease-in-out infinite;
+}
+
+/* ── Timeline Pulse ────────────────────── */
+@keyframes timeline-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(129, 140, 248, 0); }
+}
+.timeline-pulse {
+  animation: timeline-pulse 2s ease-in-out infinite;
+}
+
+/* ── Landing Page: Gradient Animation ──── */
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animated-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* ── Landing Page: Float Animation ─────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-12px); }
+}
+.float-anim {
+  animation: float 4s ease-in-out infinite;
+}
+.float-anim-slow {
+  animation: float 6s ease-in-out infinite;
+}
+.float-anim-delay {
+  animation: float 5s ease-in-out 1s infinite;
+}
+
+/* ── Fade In Up ────────────────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+.fade-in-up-delay-1 { animation: fade-in-up 0.6s ease-out 0.1s forwards; opacity: 0; }
+.fade-in-up-delay-2 { animation: fade-in-up 0.6s ease-out 0.2s forwards; opacity: 0; }
+.fade-in-up-delay-3 { animation: fade-in-up 0.6s ease-out 0.3s forwards; opacity: 0; }
+.fade-in-up-delay-4 { animation: fade-in-up 0.6s ease-out 0.4s forwards; opacity: 0; }
+.fade-in-up-delay-5 { animation: fade-in-up 0.6s ease-out 0.5s forwards; opacity: 0; }
+
+/* ── Glow Ring ─────────────────────────── */
+@keyframes glow-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+.glow-ring {
+  animation: glow-ring 2s ease-out infinite;
+}
+
+/* ── Outfit font for headings ──────────── */
+.font-display {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+}
+
+>>>>>>> Stashed changes

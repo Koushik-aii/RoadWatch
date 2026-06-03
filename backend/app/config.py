@@ -17,9 +17,16 @@ class Settings(BaseSettings):
     app_name: str = "RoadWatch API"
     app_version: str = "3.0.0"
     debug: bool = False
+<<<<<<< Updated upstream
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/roadwatch"
     database_url_sync: str = "postgresql://postgres:postgres@localhost:5432/roadwatch"
+=======
+    use_mock_ai: bool = True
+
+    database_url: str = "sqlite+aiosqlite:///./roadwatch.db"
+    database_url_sync: str = "sqlite:///./roadwatch.db"
+>>>>>>> Stashed changes
 
     cors_origins: str = "*"
 

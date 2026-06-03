@@ -128,3 +128,168 @@ async def analytics(_admin: AdminUser, db: AsyncSession = Depends(get_db)):
         users_by_role=role_counts,
         complaints_last_7_days=recent,
     )
+<<<<<<< Updated upstream
+=======
+
+
+# ---------------------------------------------------------------------------
+# Officer Zones Management
+# ---------------------------------------------------------------------------
+
+from ..models import OfficerZone
+from ..api.schemas import OfficerZoneCreate, OfficerZoneResponse
+
+@router.get("/officer-zones", response_model=list[OfficerZoneResponse])
+async def list_officer_zones(_admin: AdminUser, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(OfficerZone))
+    return result.scalars().all()
+
+
+@router.post("/officer-zones", response_model=OfficerZoneResponse, status_code=201)
+async def create_officer_zone(
+    body: OfficerZoneCreate,
+    _admin: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user_id = uuid.UUID(body.officer_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid officer ID")
+
+    zone = OfficerZone(
+        officer_id=user_id,
+        district=body.district,
+        state=body.state,
+        road_types=body.road_types
+    )
+    db.add(zone)
+    await db.commit()
+    await db.refresh(zone)
+    return zone
+
+
+@router.delete("/officer-zones/{zone_id}", status_code=204)
+async def delete_officer_zone(
+    zone_id: str,
+    _admin: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        zid = uuid.UUID(zone_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid zone ID")
+
+    result = await db.execute(select(OfficerZone).where(OfficerZone.id == zid))
+    zone = result.scalar_one_or_none()
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+
+    await db.delete(zone)
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Jurisdiction Management
+# ---------------------------------------------------------------------------
+
+from ..models import Jurisdiction, JurisdictionLevel
+from ..api.schemas import JurisdictionCreate, JurisdictionUpdate, JurisdictionResponse
+
+@router.get("/jurisdictions", response_model=list[JurisdictionResponse])
+async def list_jurisdictions(_admin: AdminUser, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Jurisdiction).order_by(Jurisdiction.name))
+    return result.scalars().all()
+
+
+@router.post("/jurisdictions", response_model=JurisdictionResponse, status_code=201)
+async def create_jurisdiction(
+    body: JurisdictionCreate,
+    _admin: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        level = JurisdictionLevel(body.level)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid level. Must be one of {[e.value for e in JurisdictionLevel]}")
+
+    parent_id = None
+    if body.parent_id:
+        try:
+            parent_id = uuid.UUID(body.parent_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid parent ID")
+
+    jurisdiction = Jurisdiction(
+        name=body.name,
+        level=level,
+        parent_id=parent_id,
+        contact_email=body.contact_email,
+        contact_phone=body.contact_phone
+    )
+    db.add(jurisdiction)
+    await db.commit()
+    await db.refresh(jurisdiction)
+    return jurisdiction
+
+
+@router.patch("/jurisdictions/{jurisdiction_id}", response_model=JurisdictionResponse)
+async def update_jurisdiction(
+    jurisdiction_id: str,
+    body: JurisdictionUpdate,
+    _admin: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        jid = uuid.UUID(jurisdiction_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid jurisdiction ID")
+
+    result = await db.execute(select(Jurisdiction).where(Jurisdiction.id == jid))
+    jurisdiction = result.scalar_one_or_none()
+    if not jurisdiction:
+        raise HTTPException(status_code=404, detail="Jurisdiction not found")
+
+    if body.name is not None:
+        jurisdiction.name = body.name
+    if body.level is not None:
+        try:
+            jurisdiction.level = JurisdictionLevel(body.level)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid level")
+    if body.parent_id is not None:
+        if body.parent_id == "":
+            jurisdiction.parent_id = None
+        else:
+            try:
+                jurisdiction.parent_id = uuid.UUID(body.parent_id)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid parent ID")
+    if body.contact_email is not None:
+        jurisdiction.contact_email = body.contact_email
+    if body.contact_phone is not None:
+        jurisdiction.contact_phone = body.contact_phone
+
+    await db.commit()
+    await db.refresh(jurisdiction)
+    return jurisdiction
+
+
+@router.delete("/jurisdictions/{jurisdiction_id}", status_code=204)
+async def delete_jurisdiction(
+    jurisdiction_id: str,
+    _admin: AdminUser,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        jid = uuid.UUID(jurisdiction_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid jurisdiction ID")
+
+    result = await db.execute(select(Jurisdiction).where(Jurisdiction.id == jid))
+    jurisdiction = result.scalar_one_or_none()
+    if not jurisdiction:
+        raise HTTPException(status_code=404, detail="Jurisdiction not found")
+
+    await db.delete(jurisdiction)
+    await db.commit()
+>>>>>>> Stashed changes

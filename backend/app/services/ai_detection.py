@@ -19,6 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+<<<<<<< Updated upstream
 import cv2
 import numpy as np
 from PIL import Image
@@ -37,6 +38,8 @@ def get_model():
         _model = YOLO("yolov8n.pt")  # ~6MB, auto-downloads from Ultralytics hub
     return _model
 
+=======
+>>>>>>> Stashed changes
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -59,10 +62,13 @@ REPAIR_PRIORITY = {
     "Low":      {"priority": "Routine",   "timeframe": "7 Days"},
 }
 
+<<<<<<< Updated upstream
 # YOLO COCO class names that we map to "Pothole" for our detection
 # In a pretrained YOLOv8n on COCO, there's no explicit "pothole" class.
 # We look for any detection and label it as road damage.
 # For a truly fine-tuned model, you'd train on a pothole-specific dataset.
+=======
+>>>>>>> Stashed changes
 UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads"
 
 
@@ -88,6 +94,7 @@ def _classify_severity(risk_score: float) -> str:
     return "Low"
 
 
+<<<<<<< Updated upstream
 def _generate_explanation(
     confidence: float,
     area_percentage: float,
@@ -122,6 +129,8 @@ def _generate_explanation(
     )
 
 
+=======
+>>>>>>> Stashed changes
 # ---------------------------------------------------------------------------
 # Drawing helpers
 # ---------------------------------------------------------------------------
@@ -139,6 +148,10 @@ def _draw_detections(image_path: str, detections: list[dict], output_path: str) 
     Draw bounding boxes + labels on the image and save the annotated result.
     Returns the output path.
     """
+<<<<<<< Updated upstream
+=======
+    import cv2
+>>>>>>> Stashed changes
     img = cv2.imread(image_path)
     if img is None:
         return output_path
@@ -149,13 +162,21 @@ def _draw_detections(image_path: str, detections: list[dict], output_path: str) 
         bbox = det["bbox"]
         severity = det["severity"]
         conf = det["confidence"]
+<<<<<<< Updated upstream
+=======
+        class_name = det.get("class_name", "Pothole")
+>>>>>>> Stashed changes
         color = SEVERITY_COLORS.get(severity, (255, 255, 255))
 
         # bbox is [x1, y1, x2, y2] in pixel coordinates
         x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
 
         # Draw filled rectangle for label background
+<<<<<<< Updated upstream
         label = f"Pothole {round(conf * 100)}% | {severity}"
+=======
+        label = f"{class_name} {round(conf * 100)}% | {severity}"
+>>>>>>> Stashed changes
         font_scale = 0.5
         thickness = 1
         (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
@@ -192,9 +213,26 @@ def _draw_detections(image_path: str, detections: list[dict], output_path: str) 
 # Main detection function
 # ---------------------------------------------------------------------------
 
+<<<<<<< Updated upstream
 def detect_road_damage(image_path: str) -> dict:
     """
     Run YOLOv8 pothole detection on an image.
+=======
+def get_inference_service():
+    """Factory to return the appropriate inference service based on config."""
+    from ..config import get_settings
+    from .ai_inference import MockInferenceService, YoloInferenceService
+    
+    settings = get_settings()
+    if settings.use_mock_ai:
+        return MockInferenceService()
+    return YoloInferenceService()
+
+
+def detect_road_damage(image_path: str) -> dict:
+    """
+    Run road damage detection on an image using the configured Inference Service.
+>>>>>>> Stashed changes
 
     Args:
         image_path: Absolute path to the uploaded image file.
@@ -207,6 +245,7 @@ def detect_road_damage(image_path: str) -> dict:
         - result_image_path: path to annotated image
         - detection_count: int
     """
+<<<<<<< Updated upstream
     model = get_model()
 
     # ── Resize image to max 640px for speed ──────────────────────
@@ -235,6 +274,26 @@ def detect_road_damage(image_path: str) -> dict:
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
                 confidence = float(box.conf[0])
                 class_id = int(box.cls[0])
+=======
+    try:
+        from PIL import Image
+        import cv2
+        import numpy as np
+        
+        service = get_inference_service()
+        img = Image.open(image_path)
+        img_area = img.size[0] * img.size[1]
+        
+        # Get raw detections from the abstraction layer
+        raw_detections = service.run_inference(image_path, MAX_IMAGE_SIZE)
+
+        detections = []
+        if raw_detections:
+            for idx, raw_det in enumerate(raw_detections):
+                x1, y1, x2, y2 = raw_det["bbox"]
+                confidence = raw_det["confidence"]
+                class_name = raw_det["class_name"]
+>>>>>>> Stashed changes
 
                 # Calculate area percentage
                 bbox_area = (x2 - x1) * (y2 - y1)
@@ -247,11 +306,40 @@ def detect_road_damage(image_path: str) -> dict:
                 # Get repair priority
                 priority_info = REPAIR_PRIORITY.get(severity, REPAIR_PRIORITY["Low"])
 
+<<<<<<< Updated upstream
                 # Generate explanation
                 explanation = _generate_explanation(confidence, area_percentage, severity, idx)
 
                 detections.append({
                     "damage_type": "Pothole",
+=======
+                # Generate explanation dynamically based on class name
+                area_desc = "small"
+                if area_percentage > 30:
+                    area_desc = "large"
+                elif area_percentage > 15:
+                    area_desc = "moderate-sized"
+                elif area_percentage > 5:
+                    area_desc = "notable"
+
+                conf_pct = round(confidence * 100, 1)
+                area_pct = round(area_percentage, 1)
+
+                urgency = {
+                    "Critical": "Immediate repair recommended — significant hazard.",
+                    "High": "Urgent attention required — poses safety risk.",
+                    "Medium": "Should be scheduled for repair within a few days.",
+                    "Low": "Minor issue — can be addressed during routine maintenance.",
+                }
+                
+                explanation = (
+                    f"Detected {area_desc} {class_name.lower()} (#{idx + 1}) occupying {area_pct}% of the road surface "
+                    f"with {conf_pct}% AI confidence. {urgency.get(severity, '')}"
+                )
+
+                detections.append({
+                    "damage_type": class_name,
+>>>>>>> Stashed changes
                     "confidence": round(confidence, 4),
                     "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)],
                     "area_percentage": round(area_percentage, 2),
@@ -260,6 +348,7 @@ def detect_road_damage(image_path: str) -> dict:
                     "repair_priority": priority_info["priority"],
                     "repair_timeframe": priority_info["timeframe"],
                     "explanation": explanation,
+<<<<<<< Updated upstream
                     "class_id": class_id,
                     "class_name": result.names.get(class_id, "unknown"),
                 })
@@ -296,3 +385,48 @@ def detect_road_damage(image_path: str) -> dict:
         "result_image_path": result_image_path,
         "result_image_filename": result_filename,
     }
+=======
+                    "class_id": raw_det.get("class_id", 0),
+                    "class_name": class_name,
+                })
+
+        # ── Compute overall risk ─────────────────────────────────────
+        if detections:
+            overall_risk_score = max(d["risk_score"] for d in detections)
+            overall_severity = _classify_severity(overall_risk_score)
+        else:
+            overall_risk_score = 0.0
+            overall_severity = "Safe"
+
+        # ── Draw annotated image ─────────────────────────────────────
+        result_filename = f"result_{Path(image_path).stem}_{uuid.uuid4().hex[:8]}.jpg"
+        result_image_path = str(UPLOADS_DIR / result_filename)
+
+        if detections:
+            _draw_detections(image_path, detections, result_image_path)
+        else:
+            # Copy original as result (no detections to draw)
+            img.save(result_image_path)
+
+        return {
+            "detections": detections,
+            "detection_count": len(detections),
+            "overall_risk_score": round(overall_risk_score, 4),
+            "overall_severity": overall_severity,
+            "result_image_path": result_image_path,
+            "result_image_filename": result_filename,
+            "message": "AI analysis complete. See detections below." if detections else "No significant road damage detected.",
+        }
+    except Exception as e:
+        print(f"AI Detection Error: {str(e)}")
+        # Safe fallback on failure
+        return {
+            "detections": [],
+            "detection_count": 0,
+            "overall_risk_score": 0.0,
+            "overall_severity": "Safe",
+            "result_image_path": image_path,
+            "result_image_filename": Path(image_path).name,
+            "message": "AI service temporarily unavailable. No significant damage detected.",
+        }
+>>>>>>> Stashed changes

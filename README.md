@@ -149,6 +149,7 @@ Key API groups:
 
 - Node.js 20 or newer
 - Python 3.10 or newer
+<<<<<<< Updated upstream
 - Docker Desktop, recommended for PostGIS
 - Git, optional but recommended
 
@@ -180,10 +181,17 @@ BOOTSTRAP_ADMIN_PASSWORD=ChangeMe123!
 ```
 
 Install dependencies and run migrations:
+=======
+
+### 1. Configure Backend (Zero-Config SQLite)
+
+The backend now uses an embedded SQLite database by default. It will automatically create all necessary tables and seed demo accounts (`admin@roadwatch.ai`, `officer@test.com`, `citizen@test.com`) on startup.
+>>>>>>> Stashed changes
 
 ```bash
 cd backend
 python -m venv venv
+<<<<<<< Updated upstream
 venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
@@ -210,11 +218,28 @@ The Gemini key is optional for local demo flows that use fallback intent handlin
 Install dependencies and start the frontend:
 
 ```bash
+=======
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
+
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+### 2. Configure Frontend
+
+Install dependencies and start the frontend:
+
+```bash
+>>>>>>> Stashed changes
 cd frontend
 npm install
 npm run dev
 ```
 
+<<<<<<< Updated upstream
 Open:
 
 ```text
@@ -343,4 +368,94 @@ RoadWatch-main/
 
 ## License
 
+=======
+Open `http://localhost:5173` in your browser.
+
+## Production Deployment Notes
+
+While the hackathon prototype uses SQLite for simplicity, the codebase supports PostgreSQL for production.
+
+1. Build frontend static assets:
+```bash
+cd frontend
+npm run build
+```
+2. Serve `frontend/dist` from a static host such as Vercel, Netlify, Cloudflare Pages, or Nginx.
+3. Deploy the backend with Uvicorn/Gunicorn workers behind a reverse proxy.
+4. Set production environment variables to use PostgreSQL:
+```env
+DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST:5432/roadwatch
+JWT_SECRET_KEY=strong-random-secret
+```
+5. Store uploaded images in object storage (e.g. AWS S3) for production, rather than local disk.
+
+## Scalability Discussion
+
+RoadWatch is structured around aggregation APIs and spatial data so it can scale beyond a small hackathon dataset.
+
+Important scaling paths:
+
+- Add PostGIS `GIST` indexes on complaint `location` and road geometries.
+- Add B-tree indexes on `district`, `severity`, `status`, `created_at`, and `assigned_department`.
+- Use bounding-box map queries so the frontend loads only visible map points.
+- Move expensive analytics to cached queries or materialized views.
+- Run image detection in a background worker instead of inside request/response paths.
+- Store uploads in S3-compatible object storage.
+- Use a queue for offline sync reconciliation, notifications, and dashboard refresh.
+- Add read replicas for analytics-heavy deployments.
+- Add audit logs for workflow transitions and officer actions.
+
+## Hackathon Demo Flow
+
+A focused 5-minute demo should show one complete civic loop:
+
+1. Upload or select a road damage image in AI Scan.
+2. Show AI-assisted severity, confidence, and repair priority.
+3. Create a complaint from the detection.
+4. Show jurisdiction routing to the responsible authority.
+5. Open the GIS map and analytics dashboard to show heatmap, clusters, dangerous zones, trends, and department performance.
+6. Switch offline, queue a complaint, reconnect, and show sync.
+7. Switch language briefly to demonstrate accessibility and inclusion.
+
+## Responsible AI and Data Notes
+
+- AI outputs are decision-support signals, not final engineering assessments.
+- Confidence and severity should be shown to users as estimates.
+- Seeded demo data should be replaced with verified public datasets before deployment.
+- Government workflow screens should be labeled as simulated unless integrated with official systems.
+- Any real deployment should include privacy review, evidence retention policy, and human review for escalations.
+
+## Repository Structure
+
+```text
+RoadWatch-main/
+  backend/
+    app/
+      api/                 FastAPI route modules
+      services/            Business logic and analytics services
+      core/                Auth, middleware, security, exceptions
+      schemas/             Auth and response schemas
+      models.py            SQLAlchemy models
+      database.py          Async DB setup
+    alembic/               Database migrations
+    data/                  Seed jurisdiction and road data
+    requirements.txt
+  frontend/
+    src/
+      components/          Shared UI components
+      context/             Auth, language, country providers
+      features/            Main app screens
+      hooks/               Offline, sync, analytics hooks
+      services/            API, IndexedDB, detection, auth clients
+      data/                Seed client data and translations
+    public/                PWA icons and screenshots
+    package.json
+  docker-compose.yml
+  DEMO_SCRIPT.md
+  HACKATHON_FINALIST_STRATEGY.md
+```
+
+## License
+
+>>>>>>> Stashed changes
 This repository is provided under the MIT License. See `LICENSE` for details.

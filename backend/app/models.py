@@ -21,7 +21,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+<<<<<<< Updated upstream
 from geoalchemy2 import Geometry
+=======
+>>>>>>> Stashed changes
 
 from .database import Base
 
@@ -97,7 +100,11 @@ class Jurisdiction(Base):
     parent_id = Column(UUID(as_uuid=True), ForeignKey("jurisdictions.id"), nullable=True)
     contact_email = Column(String, nullable=True)
     contact_phone = Column(String, nullable=True)
+<<<<<<< Updated upstream
     boundary = Column(Geometry("MULTIPOLYGON", srid=4326), nullable=True)
+=======
+    boundary = Column(Text, nullable=True)
+>>>>>>> Stashed changes
 
     parent = relationship("Jurisdiction", remote_side=[id])
     roads = relationship("Road", back_populates="jurisdiction")
@@ -110,7 +117,11 @@ class Road(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
     jurisdiction_id = Column(UUID(as_uuid=True), ForeignKey("jurisdictions.id"))
+<<<<<<< Updated upstream
     geometry = Column(Geometry("LINESTRING", srid=4326), nullable=True)
+=======
+    geometry = Column(Text, nullable=True)
+>>>>>>> Stashed changes
     relay_date = Column(Date, nullable=True)
     budget_sanctioned = Column(Numeric(12, 2), nullable=True)
     budget_spent = Column(Numeric(12, 2), nullable=True)
@@ -146,7 +157,11 @@ class Complaint(Base):
 
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+<<<<<<< Updated upstream
     location = Column(Geometry("POINT", srid=4326), nullable=True)
+=======
+    location = Column(Text, nullable=True)
+>>>>>>> Stashed changes
 
     image_path = Column(String(512), nullable=True)
     severity = Column(Enum(SeverityLevel), default=SeverityLevel.MEDIUM, nullable=False)
@@ -169,6 +184,13 @@ class Complaint(Base):
     issue_type = Column(String(100), nullable=True)
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
 
+<<<<<<< Updated upstream
+=======
+    sla_deadline = Column(DateTime(timezone=True), nullable=True)
+    is_escalated = Column(Boolean, default=False, nullable=False)
+    resolution_notes = Column(Text, nullable=True)
+
+>>>>>>> Stashed changes
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),

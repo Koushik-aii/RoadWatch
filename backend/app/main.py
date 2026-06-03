@@ -1,14 +1,23 @@
 """RoadWatch FastAPI application entry point."""
 from contextlib import asynccontextmanager
+<<<<<<< Updated upstream
+=======
+import logging
+>>>>>>> Stashed changes
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+<<<<<<< Updated upstream
+=======
+from sqlalchemy.ext.asyncio import AsyncSession
+>>>>>>> Stashed changes
 
 from .api import admin, analytics, auth, complaints, detection, officer, roads
 from .config import get_settings
 from .core.exceptions import AppException, app_exception_handler, http_exception_handler
 from .core.middleware import SecurityHeadersMiddleware
+<<<<<<< Updated upstream
 from .database import async_session_maker
 from .models import User, UserRole
 from .services.auth_service import create_user_admin, get_user_by_email
@@ -31,6 +40,53 @@ async def _bootstrap_admin() -> None:
             "System Administrator",
             UserRole.ADMIN,
         )
+=======
+from .core.security import hash_password
+from .database import async_session_maker, engine, Base
+from .models import User, UserRole
+from .services.auth_service import get_user_by_email
+from .services.file_storage import ensure_upload_dirs
+
+settings = get_settings()
+logger = logging.getLogger(__name__)
+
+
+async def _bootstrap_demo_accounts() -> None:
+    # Auto-create tables for SQLite demo stability
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with async_session_maker() as db:
+        # Admin
+        if not await get_user_by_email(db, "admin@roadwatch.ai"):
+            admin_user = User(
+                email="admin@roadwatch.ai",
+                full_name="Demo Admin",
+                role=UserRole.ADMIN,
+                hashed_password=hash_password("DemoPass123!"),
+            )
+            db.add(admin_user)
+
+        # Officer
+        if not await get_user_by_email(db, "officer@test.com"):
+            officer_user = User(
+                email="officer@test.com",
+                full_name="Demo Officer",
+                role=UserRole.OFFICER,
+                hashed_password=hash_password("DemoPass123!"),
+            )
+            db.add(officer_user)
+
+        # Citizen
+        if not await get_user_by_email(db, "citizen@test.com"):
+            citizen_user = User(
+                email="citizen@test.com",
+                full_name="Demo Citizen",
+                role=UserRole.CITIZEN,
+                hashed_password=hash_password("DemoPass123!"),
+            )
+            db.add(citizen_user)
+>>>>>>> Stashed changes
         await db.commit()
 
 
@@ -38,9 +94,15 @@ async def _bootstrap_admin() -> None:
 async def lifespan(app: FastAPI):
     ensure_upload_dirs()
     try:
+<<<<<<< Updated upstream
         await _bootstrap_admin()
     except Exception:
         pass
+=======
+        await _bootstrap_demo_accounts()
+    except Exception as e:
+        print(f"Bootstrap error: {e}")
+>>>>>>> Stashed changes
     yield
 
 

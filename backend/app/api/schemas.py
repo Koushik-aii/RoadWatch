@@ -120,6 +120,10 @@ class ComplaintUpdateRequest(BaseModel):
     assigned_department: Optional[str] = Field(None, max_length=255)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
+<<<<<<< Updated upstream
+=======
+    resolution_notes: Optional[str] = Field(None, max_length=5000)
+>>>>>>> Stashed changes
 
 
 class ComplaintResponse(BaseModel):
@@ -151,6 +155,12 @@ class ComplaintResponse(BaseModel):
     expectedDays: int = 21
     overdue: bool = False
     routed_authority: Optional[AuthorityInfo] = None
+<<<<<<< Updated upstream
+=======
+    sla_deadline: Optional[datetime] = None
+    is_escalated: bool = False
+    resolution_notes: Optional[str] = None
+>>>>>>> Stashed changes
 
     class Config:
         from_attributes = True
@@ -248,3 +258,57 @@ class DetectionListResponse(BaseModel):
     """Paginated list of detections."""
     total: int
     detections: list[DetectionListItem]
+<<<<<<< Updated upstream
+=======
+
+
+# ---------------------------------------------------------------------------
+# Admin & Jurisdiction schemas
+# ---------------------------------------------------------------------------
+
+class OfficerZoneCreate(BaseModel):
+    officer_id: str
+    district: str
+    state: str
+    road_types: Optional[str] = None
+
+
+class OfficerZoneResponse(BaseModel):
+    id: str
+    officer_id: str
+    district: str
+    state: str
+    road_types: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class JurisdictionCreate(BaseModel):
+    name: str
+    level: str  # Country, State, District, Local
+    parent_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+
+class JurisdictionUpdate(BaseModel):
+    name: Optional[str] = None
+    level: Optional[str] = None
+    parent_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+
+class JurisdictionResponse(BaseModel):
+    id: str
+    name: str
+    level: str
+    parent_id: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+>>>>>>> Stashed changes

@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, WifiOff, ClipboardList, ArrowRight, RefreshCw } from 'lucide-react';
+<<<<<<< Updated upstream
 import { getComplaints } from '../services/db';
+=======
+import { getAllHistory } from '../services/db';
+>>>>>>> Stashed changes
 import { listComplaints } from '../services/complaintsApi';
 import { ComplaintRowSkeleton } from '../components/SkeletonLoaders';
 import { useLanguage } from '../context/LanguageContext';
@@ -66,7 +70,11 @@ export default function MyComplaints() {
     setIsLoading(true);
     setLoadError('');
     try {
+<<<<<<< Updated upstream
       const offline = await getComplaints();
+=======
+      const offline = await getAllHistory();
+>>>>>>> Stashed changes
       setOfflineComplaints(offline || []);
 
       if (navigator.onLine) {

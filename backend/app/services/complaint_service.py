@@ -190,6 +190,12 @@ async def create_complaint(
         point = from_shape(Point(longitude, latitude), srid=4326)
     except Exception:
         point = None
+<<<<<<< Updated upstream
+=======
+        
+    from datetime import timedelta
+    sla_deadline = datetime.now(timezone.utc) + timedelta(days=7)
+>>>>>>> Stashed changes
 
     complaint = Complaint(
         id=new_uuid,
@@ -212,6 +218,11 @@ async def create_complaint(
         road_id=road_id,
         issue_type=issue_type or final_title,
         reporter_id=reporter_id,
+<<<<<<< Updated upstream
+=======
+        sla_deadline=sla_deadline,
+        is_escalated=False,
+>>>>>>> Stashed changes
     )
     db.add(complaint)
     await db.flush()
@@ -321,6 +332,13 @@ async def update_complaint(
         complaint.severity = SeverityLevel(updates["severity"])
     if "assigned_department" in updates and updates["assigned_department"] is not None:
         complaint.assigned_department = updates["assigned_department"]
+<<<<<<< Updated upstream
+=======
+    if "resolution_notes" in updates:
+        complaint.resolution_notes = updates["resolution_notes"]
+    if "is_escalated" in updates:
+        complaint.is_escalated = updates["is_escalated"]
+>>>>>>> Stashed changes
     if "latitude" in updates and updates["latitude"] is not None:
         complaint.latitude = updates["latitude"]
     if "longitude" in updates and updates["longitude"] is not None:

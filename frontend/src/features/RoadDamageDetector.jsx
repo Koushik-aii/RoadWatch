@@ -1,13 +1,27 @@
 import { useState, useRef, useCallback } from 'react';
+<<<<<<< Updated upstream
 import { Upload, Camera, ScanLine, AlertTriangle, CheckCircle2, Shield, RotateCcw, Send, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import RiskScoreGauge from '../components/cards/RiskScoreGauge';
 import DetectionResultCard from '../components/cards/DetectionResultCard';
 import { detectRoadDamage, createComplaintFromDetection } from '../services/detectionApi';
+=======
+import { Upload, Camera, ScanLine, AlertTriangle, CheckCircle2, Shield, RotateCcw, Send, ChevronDown, ChevronUp, Sparkles, Play } from 'lucide-react';
+import RiskScoreGauge from '../components/cards/RiskScoreGauge';
+import DetectionResultCard from '../components/cards/DetectionResultCard';
+import AIStatusLabel from '../components/ui/AIStatusLabel';
+import ConfidenceMeter from '../components/ui/ConfidenceMeter';
+import { detectRoadDamage, createComplaintFromDetection } from '../services/detectionApi';
+import { useDemoMode } from '../hooks/useDemoMode';
+>>>>>>> Stashed changes
 
 const API_HOST = 'http://localhost:8000';
 
 // ── Upload State Component ──────────────────────────────────
+<<<<<<< Updated upstream
 function UploadZone({ onFileSelect, isLoading }) {
+=======
+function UploadZone({ onFileSelect, onTryDemo, isLoading }) {
+>>>>>>> Stashed changes
   const fileRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -34,9 +48,15 @@ function UploadZone({ onFileSelect, isLoading }) {
         <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
           <ScanLine size={28} className="text-white" />
         </div>
+<<<<<<< Updated upstream
         <h2 className="text-white text-lg font-bold">AI Road Scanner</h2>
         <p className="text-slate-400 text-xs max-w-[280px] leading-relaxed">
           Upload a road photo to detect potholes using real YOLOv8 AI. Get instant severity analysis, risk scores, and repair priority estimates.
+=======
+        <h2 className="text-white text-lg font-bold font-display">AI Road Scanner</h2>
+        <p className="text-slate-400 text-xs max-w-[280px] leading-relaxed">
+          Upload a road photo to detect road defects using real YOLOv8 AI. Get instant severity analysis, risk scores, and repair priority estimates.
+>>>>>>> Stashed changes
         </p>
       </div>
 
@@ -69,6 +89,7 @@ function UploadZone({ onFileSelect, isLoading }) {
         />
       </div>
 
+<<<<<<< Updated upstream
       {/* Camera button (mobile-friendly) */}
       <button
         onClick={() => {
@@ -89,6 +110,40 @@ function UploadZone({ onFileSelect, isLoading }) {
       </button>
 
       {/* Future scope — honest and impressive */}
+=======
+      {/* Action buttons row */}
+      <div className="flex gap-3 w-full max-w-[340px]">
+        {/* Camera button */}
+        <button
+          onClick={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.capture = 'environment';
+            input.onchange = (e) => {
+              const file = e.target.files?.[0];
+              if (file) onFileSelect(file);
+            };
+            input.click();
+          }}
+          className="flex-1 flex items-center justify-center gap-2 text-xs text-indigo-400 font-medium px-4 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+        >
+          <Camera size={14} />
+          Camera
+        </button>
+
+        {/* Demo button */}
+        <button
+          onClick={onTryDemo}
+          className="flex-1 flex items-center justify-center gap-2 text-xs text-purple-400 font-medium px-4 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors glow-ring"
+        >
+          <Play size={14} />
+          Try Demo
+        </button>
+      </div>
+
+      {/* Capabilities */}
+>>>>>>> Stashed changes
       <div className="w-full max-w-[340px] bg-slate-800/30 rounded-xl border border-slate-700/30 p-3 mt-2">
         <p className="text-[10px] text-slate-500 font-semibold mb-2 flex items-center gap-1">
           <Sparkles size={10} /> DETECTION CAPABILITIES
@@ -96,6 +151,7 @@ function UploadZone({ onFileSelect, isLoading }) {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+<<<<<<< Updated upstream
             <span className="text-[11px] text-slate-300">Pothole Detection — <span className="text-emerald-400 font-semibold">Active (YOLOv8 AI)</span></span>
           </div>
           <div className="flex items-center gap-2">
@@ -109,6 +165,21 @@ function UploadZone({ onFileSelect, isLoading }) {
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
             <span className="text-[11px] text-slate-500">Broken Road — <span className="text-slate-600">Coming Soon</span></span>
+=======
+            <span className="text-[11px] text-slate-300">Pothole Detection — <span className="text-emerald-400 font-semibold">Active</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+            <span className="text-[11px] text-slate-300">Crack Detection — <span className="text-emerald-400 font-semibold">Active</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+            <span className="text-[11px] text-slate-300">Waterlogging — <span className="text-emerald-400 font-semibold">Active</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+            <span className="text-[11px] text-slate-300">Missing Signage — <span className="text-emerald-400 font-semibold">Active</span></span>
+>>>>>>> Stashed changes
           </div>
         </div>
       </div>
@@ -117,6 +188,7 @@ function UploadZone({ onFileSelect, isLoading }) {
 }
 
 // ── Scanning Animation ──────────────────────────────────────
+<<<<<<< Updated upstream
 function ScanningView({ previewUrl }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-5 space-y-5">
@@ -127,6 +199,28 @@ function ScanningView({ previewUrl }) {
         {/* Scan line animation */}
         <div className="absolute inset-0 scan-overlay" />
         <div className="scan-line" />
+=======
+function ScanningView({ previewUrl, isDemoMode }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center p-5 space-y-5">
+      <div className="relative w-full max-w-[340px] aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700 bg-slate-800">
+        {previewUrl ? (
+          <img src={previewUrl} alt="Scanning" className="w-full h-full object-cover opacity-60" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+            <ScanLine size={48} className="text-slate-700" />
+          </div>
+        )}
+        {/* Scan line animation */}
+        <div className="absolute inset-0 scan-overlay" />
+        <div className="scan-line-anim" />
+        {/* Demo badge */}
+        {isDemoMode && (
+          <div className="absolute top-3 left-3">
+            <AIStatusLabel variant="assisted" size="sm" />
+          </div>
+        )}
+>>>>>>> Stashed changes
       </div>
 
       <div className="text-center space-y-2">
@@ -135,15 +229,28 @@ function ScanningView({ previewUrl }) {
           <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse animation-delay-150" />
           <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse animation-delay-300" />
         </div>
+<<<<<<< Updated upstream
         <p className="text-indigo-400 text-sm font-semibold">AI is analyzing road surface...</p>
         <p className="text-slate-500 text-[10px]">Running YOLOv8 neural network inference</p>
+=======
+        <p className="text-indigo-400 text-sm font-semibold">
+          {isDemoMode ? 'Running demo analysis...' : 'AI is analyzing road surface...'}
+        </p>
+        <p className="text-slate-500 text-[10px]">
+          {isDemoMode ? 'Loading pre-computed AI result' : 'Running YOLOv8 neural network inference'}
+        </p>
+>>>>>>> Stashed changes
       </div>
     </div>
   );
 }
 
 // ── Results View ────────────────────────────────────────────
+<<<<<<< Updated upstream
 function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
+=======
+function ResultsView({ result, onCreateComplaint, onReset, complaintStatus, isDemoMode }) {
+>>>>>>> Stashed changes
   const [showComplaintForm, setShowComplaintForm] = useState(false);
   const [complaintData, setComplaintData] = useState({
     latitude: '', longitude: '', district: '', state: '', road_type: ''
@@ -169,6 +276,7 @@ function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+<<<<<<< Updated upstream
       {/* Result image */}
       <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700 bg-slate-800 shadow-xl">
         <img
@@ -177,6 +285,33 @@ function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
           className="w-full object-contain"
           onError={(e) => { e.target.src = `${API_HOST}${result.image_url}`; }}
         />
+=======
+      {/* AI Labels bar */}
+      <div className="flex flex-wrap gap-2">
+        {hasDetections && <AIStatusLabel variant="verified" />}
+        <AIStatusLabel variant="analysis" />
+        {hasDetections && result.overall_severity === 'Critical' && <AIStatusLabel variant="high-risk" />}
+        {isDemoMode && <AIStatusLabel variant="assisted" />}
+      </div>
+
+      {/* Result image */}
+      <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700 bg-slate-800 shadow-xl">
+        {isDemoMode ? (
+          <div className="w-full aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center">
+            <div className="text-center space-y-2">
+              <ScanLine size={40} className="mx-auto text-indigo-400/50" />
+              <p className="text-slate-500 text-xs">Demo Detection Result</p>
+            </div>
+          </div>
+        ) : (
+          <img
+            src={`${API_HOST}${result.result_image_url}`}
+            alt="Detection result"
+            className="w-full object-contain"
+            onError={(e) => { e.target.src = `${API_HOST}${result.image_url}`; }}
+          />
+        )}
+>>>>>>> Stashed changes
         {/* Detection count badge */}
         <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1.5">
           {hasDetections ? (
@@ -185,11 +320,16 @@ function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
             <CheckCircle2 size={12} className="text-emerald-400" />
           )}
           <span className="text-xs font-bold text-white">
+<<<<<<< Updated upstream
             {hasDetections ? `${result.detection_count} pothole${result.detection_count > 1 ? 's' : ''} found` : 'No damage detected'}
+=======
+            {hasDetections ? `${result.detection_count} issue${result.detection_count > 1 ? 's' : ''} found` : 'No damage detected'}
+>>>>>>> Stashed changes
           </span>
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {/* Risk Score Gauge */}
       {hasDetections && (
         <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-4 flex flex-col items-center">
@@ -197,6 +337,22 @@ function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
             <Shield size={10} /> OVERALL ROAD RISK ASSESSMENT
           </p>
           <RiskScoreGauge score={result.overall_risk_score} severity={result.overall_severity} />
+=======
+      {/* Risk Score Gauge + Confidence Meter */}
+      {hasDetections && (
+        <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-4">
+          <p className="text-[10px] text-slate-500 font-semibold mb-3 flex items-center gap-1">
+            <Shield size={10} /> OVERALL ROAD RISK ASSESSMENT
+          </p>
+          <div className="flex items-center justify-around gap-4">
+            <RiskScoreGauge score={result.overall_risk_score} severity={result.overall_severity} size={140} />
+            <ConfidenceMeter
+              value={Math.round((detections[0]?.confidence || 0) * 100)}
+              label="Top Detection"
+              size={90}
+            />
+          </div>
+>>>>>>> Stashed changes
         </div>
       )}
 
@@ -204,10 +360,18 @@ function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
       {!hasDetections && (
         <div className="bg-emerald-500/10 rounded-2xl border border-emerald-500/20 p-5 text-center space-y-2">
           <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
+<<<<<<< Updated upstream
           <h3 className="text-emerald-400 font-bold text-sm">Road Appears Safe</h3>
           <p className="text-slate-400 text-xs">
             No potholes were detected in this image. The road surface appears to be in acceptable condition.
           </p>
+=======
+          <h3 className="text-emerald-400 font-bold text-sm">No Significant Road Damage Detected</h3>
+          <p className="text-slate-400 text-xs">
+            The AI analysis found no defects or significant road damage in this image. The road surface appears to be in acceptable condition.
+          </p>
+          <AIStatusLabel variant="verified" />
+>>>>>>> Stashed changes
         </div>
       )}
 
@@ -235,6 +399,12 @@ function ResultsView({ result, onCreateComplaint, onReset, complaintStatus }) {
       {/* Status message */}
       <div className="bg-slate-800/30 rounded-xl p-3 border border-slate-700/30">
         <p className="text-[11px] text-slate-300 leading-relaxed">{result.message}</p>
+<<<<<<< Updated upstream
+=======
+        <p className="text-[9px] text-slate-600 mt-1.5">
+          Detection timestamp: {new Date().toLocaleString()}
+        </p>
+>>>>>>> Stashed changes
       </div>
 
       {/* Complaint section */}
@@ -351,6 +521,10 @@ export default function RoadDamageDetector() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [complaintStatus, setComplaintStatus] = useState('idle'); // idle | loading | success | error
+<<<<<<< Updated upstream
+=======
+  const { isDemoMode, triggerDemo, resetDemo } = useDemoMode();
+>>>>>>> Stashed changes
 
   const handleFileSelect = async (file) => {
     // Show preview + scanning state
@@ -370,7 +544,32 @@ export default function RoadDamageDetector() {
     }
   };
 
+<<<<<<< Updated upstream
   const handleCreateComplaint = async (complaintData) => {
+=======
+  const handleTryDemo = async () => {
+    setPreviewUrl(null);
+    setState('scanning');
+    setError('');
+
+    try {
+      const data = await triggerDemo();
+      setResult(data);
+      setState('results');
+    } catch (err) {
+      setError('Demo failed unexpectedly');
+      setState('error');
+    }
+  };
+
+  const handleCreateComplaint = async (complaintData) => {
+    if (isDemoMode) {
+      // Simulate complaint creation in demo mode
+      setComplaintStatus('loading');
+      setTimeout(() => setComplaintStatus('success'), 1500);
+      return;
+    }
+>>>>>>> Stashed changes
     if (!result?.detection_id) return;
     setComplaintStatus('loading');
     try {
@@ -388,6 +587,10 @@ export default function RoadDamageDetector() {
     setResult(null);
     setError('');
     setComplaintStatus('idle');
+<<<<<<< Updated upstream
+=======
+    resetDemo();
+>>>>>>> Stashed changes
   };
 
   return (
@@ -397,19 +600,35 @@ export default function RoadDamageDetector() {
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
           <ScanLine size={16} className="text-white" />
         </div>
+<<<<<<< Updated upstream
         <div>
           <h1 className="text-white text-sm font-bold">AI Road Damage Scanner</h1>
           <p className="text-slate-500 text-[10px]">Powered by YOLOv8 Neural Network</p>
         </div>
+=======
+        <div className="flex-1">
+          <h1 className="text-white text-sm font-bold font-display">AI Road Damage Scanner</h1>
+          <p className="text-slate-500 text-[10px]">Powered by YOLOv8 Neural Network</p>
+        </div>
+        {isDemoMode && <AIStatusLabel variant="assisted" size="sm" />}
+>>>>>>> Stashed changes
       </div>
 
       {/* Content */}
       {state === 'upload' && (
+<<<<<<< Updated upstream
         <UploadZone onFileSelect={handleFileSelect} />
       )}
 
       {state === 'scanning' && (
         <ScanningView previewUrl={previewUrl} />
+=======
+        <UploadZone onFileSelect={handleFileSelect} onTryDemo={handleTryDemo} />
+      )}
+
+      {state === 'scanning' && (
+        <ScanningView previewUrl={previewUrl} isDemoMode={isDemoMode} />
+>>>>>>> Stashed changes
       )}
 
       {state === 'results' && result && (
@@ -418,6 +637,10 @@ export default function RoadDamageDetector() {
           onCreateComplaint={handleCreateComplaint}
           onReset={handleReset}
           complaintStatus={complaintStatus}
+<<<<<<< Updated upstream
+=======
+          isDemoMode={isDemoMode}
+>>>>>>> Stashed changes
         />
       )}
 
@@ -430,6 +653,7 @@ export default function RoadDamageDetector() {
             <h3 className="text-red-400 font-bold text-sm">Detection Failed</h3>
             <p className="text-slate-400 text-xs max-w-[280px]">{error}</p>
           </div>
+<<<<<<< Updated upstream
           <button
             onClick={handleReset}
             className="flex items-center gap-2 text-xs text-indigo-400 font-medium px-4 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
@@ -437,6 +661,24 @@ export default function RoadDamageDetector() {
             <RotateCcw size={14} />
             Try Again
           </button>
+=======
+          <div className="flex gap-3">
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 text-xs text-indigo-400 font-medium px-4 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+            >
+              <RotateCcw size={14} />
+              Try Again
+            </button>
+            <button
+              onClick={handleTryDemo}
+              className="flex items-center gap-2 text-xs text-purple-400 font-medium px-4 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+            >
+              <Play size={14} />
+              Try Demo
+            </button>
+          </div>
+>>>>>>> Stashed changes
         </div>
       )}
     </div>

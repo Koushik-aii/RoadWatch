@@ -76,6 +76,12 @@ def _build_complaint_response(complaint, authority: AuthorityInfo | None = None)
         expectedDays=data["expectedDays"],
         overdue=data["overdue"],
         routed_authority=routed,
+<<<<<<< Updated upstream
+=======
+        sla_deadline=complaint.sla_deadline,
+        is_escalated=complaint.is_escalated,
+        resolution_notes=complaint.resolution_notes,
+>>>>>>> Stashed changes
     )
 
 

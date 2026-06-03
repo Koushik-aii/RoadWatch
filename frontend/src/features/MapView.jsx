@@ -2,8 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+<<<<<<< Updated upstream
 import { AlertCircle, Filter, Flame, Layers, Map as MapIcon, Radar, Route } from 'lucide-react';
 import roadsData from '../data/roads_mock.json';
+=======
+import { AlertCircle, Filter, Flame, Map as MapIcon, Radar, Route, AlertTriangle, ShieldAlert } from 'lucide-react';
+import roadsData from '../data/roads_mock.json';
+import { accidentsData } from '../data/accidentsMock';
+>>>>>>> Stashed changes
 import { ROAD_TYPE_COLORS } from '../data/mockData';
 import LeafletHeatmapLayer from '../components/maps/LeafletHeatmapLayer';
 import { MapLoadingSkeleton } from '../components/SkeletonLoaders';
@@ -103,9 +109,16 @@ export default function MapView({ onSwitchToChat }) {
   const [filterType, setFilterType] = useState('All');
   const [filterCondition, setFilterCondition] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
+<<<<<<< Updated upstream
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showClusters, setShowClusters] = useState(true);
   const [showDangerZones, setShowDangerZones] = useState(true);
+=======
+  const [showRoads, setShowRoads] = useState(true);
+  const [showComplaints, setShowComplaints] = useState(true);
+  const [showAccidents, setShowAccidents] = useState(true);
+  const [showRiskZones, setShowRiskZones] = useState(true);
+>>>>>>> Stashed changes
   const [mapLoaded, setMapLoaded] = useState(false);
   const [aiDetections, setAiDetections] = useState([]);
   const { data: analytics, loading, error } = useAnalytics(filters, { pollMs: 30000 });
@@ -161,7 +174,19 @@ export default function MapView({ onSwitchToChat }) {
     });
   }, [country, filterType, filterCondition, filters.district]);
 
+<<<<<<< Updated upstream
   const visiblePoints = (mapData.points || []).slice(0, showClusters ? 120 : 500);
+=======
+  const filteredAccidents = useMemo(() => {
+    return accidentsData.filter((point) => {
+      const sevStr = point[3];
+      if (filters.severity !== 'All' && sevStr !== filters.severity) return false;
+      return true;
+    });
+  }, [filters.severity]);
+
+  const visiblePoints = (mapData.points || []).slice(0, 120);
+>>>>>>> Stashed changes
   const clusters = mapData.clusters || [];
   const dangerousZones = mapData.dangerous_zones || [];
   const summary = analytics?.summary || {};
@@ -256,10 +281,18 @@ export default function MapView({ onSwitchToChat }) {
                 </select>
               </div>
 
+<<<<<<< Updated upstream
               <div className="grid grid-cols-3 gap-2">
                 <ToggleButton icon={Flame} active={showHeatmap} label="Heat" onClick={() => setShowHeatmap((v) => !v)} />
                 <ToggleButton icon={Layers} active={showClusters} label="Cluster" onClick={() => setShowClusters((v) => !v)} />
                 <ToggleButton icon={AlertCircle} active={showDangerZones} label="Risk" onClick={() => setShowDangerZones((v) => !v)} />
+=======
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <ToggleButton icon={Route} active={showRoads} label="Roads" onClick={() => setShowRoads((v) => !v)} />
+                <ToggleButton icon={Flame} active={showComplaints} label="Complaints" onClick={() => setShowComplaints((v) => !v)} />
+                <ToggleButton icon={AlertTriangle} active={showAccidents} label="Accidents" onClick={() => setShowAccidents((v) => !v)} />
+                <ToggleButton icon={ShieldAlert} active={showRiskZones} label="Risk Zones" onClick={() => setShowRiskZones((v) => !v)} />
+>>>>>>> Stashed changes
               </div>
             </div>
           )}
@@ -281,9 +314,17 @@ export default function MapView({ onSwitchToChat }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
           <TileLoadWatcher onLoaded={() => setTimeout(() => setMapLoaded(true), 500)} />
+<<<<<<< Updated upstream
           {showHeatmap && <LeafletHeatmapLayer points={mapData.heatmap || []} options={heatmapOptions} />}
 
           {filteredRoads.map((road, index) => {
+=======
+          
+          {showComplaints && <LeafletHeatmapLayer points={mapData.heatmap || []} options={{ ...heatmapOptions, theme: 'complaints' }} />}
+          {showAccidents && <LeafletHeatmapLayer points={filteredAccidents} options={{ ...heatmapOptions, theme: 'accidents' }} />}
+
+          {showRoads && filteredRoads.map((road, index) => {
+>>>>>>> Stashed changes
             const baseCoords = DISTRICT_COORDS[road.district] || countryCenter;
             const coords = [baseCoords[0] + index * 0.01 - 0.03, baseCoords[1] + index * 0.01 - 0.03];
             const cond = getCondition(road);
@@ -322,7 +363,11 @@ export default function MapView({ onSwitchToChat }) {
             );
           })}
 
+<<<<<<< Updated upstream
           {showClusters && clusters.map((cluster) => (
+=======
+          {showComplaints && clusters.map((cluster) => (
+>>>>>>> Stashed changes
             <CircleMarker
               key={cluster.id}
               center={[cluster.lat, cluster.lng]}
@@ -340,7 +385,11 @@ export default function MapView({ onSwitchToChat }) {
             </CircleMarker>
           ))}
 
+<<<<<<< Updated upstream
           {showDangerZones && dangerousZones.map((zone) => (
+=======
+          {showRiskZones && dangerousZones.map((zone) => (
+>>>>>>> Stashed changes
             <CircleMarker
               key={`risk-${zone.id}`}
               center={[zone.lat, zone.lng]}
@@ -364,7 +413,11 @@ export default function MapView({ onSwitchToChat }) {
             </CircleMarker>
           ))}
 
+<<<<<<< Updated upstream
           {!showClusters && visiblePoints.map((point) => (
+=======
+          {showComplaints && visiblePoints.map((point) => (
+>>>>>>> Stashed changes
             <Marker key={point.id} position={[point.lat, point.lng]} icon={makeSeverityIcon(point.severity)}>
               <Popup className="roadwatch-popup">
                 <div className="p-1">
